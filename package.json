@@ -5,9 +5,11 @@
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
-    "start": "react-router-serve ./build/server/index.js",
+    "start": "react-router-serve --host 0.0.0.0 --port 8080 ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
-    "ingest_arena": "tsx scripts/ingest_arena.ts"
+    "ingest_arena": "tsx scripts/ingest_arena.ts",
+      "download_images": "tsx scripts/download_images.ts"
+
   },
   "dependencies": {
     "@aredotna/sdk": "^0.1.1",
