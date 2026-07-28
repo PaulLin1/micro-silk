@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import { parse } from "csv-parse/sync";
 import "dotenv/config";
 
-const csv_path = "/mnt/scratch/linpaul1/micro-silk/blocks.csv";
+const csv_path = "./blocks.csv";
 const folder_dir = "/mnt/scratch/linpaul1/micro-silk/images";
 await fs.mkdir(folder_dir, { recursive: true });
 
