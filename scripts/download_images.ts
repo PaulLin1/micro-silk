@@ -1,30 +1,20 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { sql } from "drizzle-orm";
-import pg from "pg";
 import fs from "node:fs/promises";
+import { parse } from "csv-parse/sync";
 import "dotenv/config";
 
-import { blocks as blocksTable } from "~/db/schema";
-
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  max: 10,
-});
-
-const db = drizzle(pool);
-
+const csv_path = "/mnt/scratch/linpaul1/micro-silk/blocks.csv";
 const folder_dir = "/mnt/scratch/linpaul1/micro-silk/images";
 await fs.mkdir(folder_dir, { recursive: true });
 
-const PAGE_SIZE = 5000;
 const CONCURRENCY = 50;
 
-let lastId: number | null = null;
 let totalDownloaded = 0;
 let totalSkipped = 0;
 let totalFailed = 0;
 
-async function downloadImage(row: { id: number; src: string | null }) {
+type Row = { id: number; src: string | null };
+
+async function downloadImage(row: Row) {
   if (!row.src) {
     totalSkipped++;
     return;
@@ -48,10 +38,7 @@ async function downloadImage(row: { id: number; src: string | null }) {
   }
 }
 
-async function processBatchConcurrently(
-  rows: { id: number; src: string | null }[],
-  concurrency: number,
-) {
+async function processBatchConcurrently(rows: Row[], concurrency: number) {
   for (let i = 0; i < rows.length; i += concurrency) {
     const chunk = rows.slice(i, i + concurrency);
     await Promise.all(chunk.map(downloadImage));
@@ -60,31 +47,35 @@ async function processBatchConcurrently(
 
 console.time("total");
 
-while (true) {
-  console.time("page-select");
+console.time("csv-read");
+const fileContent = await fs.readFile(csv_path, "utf-8");
+const records: { id: string; image_url: string }[] = parse(fileContent, {
+  columns: true,
+  skip_empty_lines: true,
+});
+console.timeEnd("csv-read");
 
-  // Only pull id + the one JSON field we need — avoids hauling
-  // full JSONB blobs (and any other large columns) over the wire.
-  const page = await db
-    .select({
-      id: blocksTable.id,
-      src: sql<string | null>`${blocksTable.data}->'image'->'small'->>'src'`,
-    })
-    .from(blocksTable)
-    .where(lastId !== null ? sql`${blocksTable.id} > ${lastId}` : sql`true`)
-    .orderBy(blocksTable.id)
-    .limit(PAGE_SIZE);
+const rows: Row[] = records.map((r) => ({
+  id: Number(r.id),
+  src: r.image_url && r.image_url.length > 0 ? r.image_url : null,
+}));
 
-  console.timeEnd("page-select");
+console.log(`loaded ${rows.length} rows from csv`);
 
-  if (page.length === 0) break;
+const PAGE_SIZE = 5000;
 
+for (let i = 0; i < rows.length; i += PAGE_SIZE) {
+  console.time("page-process");
+
+  const page = rows.slice(i, i + PAGE_SIZE);
   await processBatchConcurrently(page, CONCURRENCY);
 
-  lastId = page[page.length - 1].id;
+  console.timeEnd("page-process");
 
   console.log(
-    `progress: downloaded=${totalDownloaded} skipped=${totalSkipped} failed=${totalFailed} lastId=${lastId}`,
+    `progress: downloaded=${totalDownloaded} skipped=${totalSkipped} failed=${totalFailed} processed=${
+      i + page.length
+    }/${rows.length}`,
   );
 }
 
@@ -92,5 +83,3 @@ console.timeEnd("total");
 console.log(
   `done. downloaded=${totalDownloaded} skipped=${totalSkipped} failed=${totalFailed}`,
 );
-
-await pool.end();
