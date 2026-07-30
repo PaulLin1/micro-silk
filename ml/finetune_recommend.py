@@ -11,17 +11,18 @@ for images it never saw during training") is real, not memorized.
 Pipeline (all in this one file, meant to run on the GPU box):
   1. load channels.csv / connections.csv / blocks.csv
   2. keep blocks whose image actually downloaded to disk
-  3. split channels into train / held-out
+  3. hold out --demo-channels completely (never trained on) as train/held-out split
   4. embed every used block ONCE with frozen CLIP (cached to disk)
   5. train a small residual head with supervised-contrastive loss
      (batches built as: sample K channels, sample M blocks per channel —
      this naturally oversamples small channels for free)
   6. eval: held-out-channel retrieval hit_rate@10, baseline CLIP vs trained head
-  7. save head weights + a couple of before/after recommendation grids
+  7. save head weights + one before/after recommendation grid per demo channel
 
 Usage:
   cd ml && uv run python finetune_recommend.py
-  uv run python finetune_recommend.py --steps 50 --min-channel-blocks 10   # quick smoke test
+  uv run python finetune_recommend.py --demo-channels "vaporwave,cottagecore"   # pick your own aesthetics
+  uv run python finetune_recommend.py --steps 50 --min-channel-blocks 10        # quick smoke test
 """
 import argparse
 import hashlib
@@ -85,6 +86,38 @@ def split_channels(channel_to_blocks, holdout_frac, seed):
     holdout = set(channel_ids[:n_holdout])
     train = set(channel_ids[n_holdout:])
     return train, holdout
+
+
+def resolve_channels(spec, channel_title, channel_to_blocks):
+    """Resolve a comma-separated list of channel titles (substring match,
+    case-insensitive) or literal channel ids to channel ids, restricted to
+    channels that survived the min-blocks/has-images filter. Prints which
+    channel got picked so a fuzzy title match isn't silently wrong."""
+    resolved = []
+    for token in spec.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if token.isdigit():
+            cid = int(token)
+            if cid not in channel_to_blocks:
+                raise SystemExit(f"--demo-channels: channel id {cid} has no usable blocks (missing images or below --min-channel-blocks)")
+            resolved.append(cid)
+            continue
+        candidates = [
+            cid for cid in channel_to_blocks
+            if token.lower() in str(channel_title.get(cid, "")).lower()
+        ]
+        if not candidates:
+            raise SystemExit(f"--demo-channels: no channel title matching {token!r} (after filtering to channels with images / >= --min-channel-blocks)")
+        best = max(candidates, key=lambda c: len(channel_to_blocks[c]))
+        picked = f"#{best} {channel_title[best]!r} ({len(channel_to_blocks[best])} blocks)"
+        if len(candidates) > 1:
+            print(f"  {token!r} matched {len(candidates)} channels, using largest: {picked}")
+        else:
+            print(f"  {token!r} -> {picked}")
+        resolved.append(best)
+    return resolved
 
 
 # ---------------------------------------------------------------- CLIP embedding (frozen, once)
@@ -254,7 +287,13 @@ def main():
     ap.add_argument("--image-dir", default="/mnt/scratch/linpaul1/micro-silk/images")
     ap.add_argument("--min-channel-blocks", type=int, default=20)
     ap.add_argument("--max-per-channel", type=int, default=150, help="cap blocks used per channel, keeps embedding step bounded")
-    ap.add_argument("--holdout-frac", type=float, default=0.15)
+    ap.add_argument("--holdout-frac", type=float, default=0.15, help="used only when --demo-channels is empty")
+    ap.add_argument(
+        "--demo-channels", default="drain gang,y2k,grunge,brutalist",
+        help="comma-separated channel titles (substring match) or numeric channel ids to hold out "
+             "completely and demo — these are never trained on. Pass '' to fall back to a random "
+             "--holdout-frac split instead of naming channels.",
+    )
     ap.add_argument("--steps", type=int, default=300)
     ap.add_argument("--eval-every", type=int, default=25)
     ap.add_argument("--batch-channels", type=int, default=8)
@@ -284,7 +323,14 @@ def main():
             for ch, blocks in channel_to_blocks.items()
         }
 
-    train_channels, holdout_channels = split_channels(channel_to_blocks, args.holdout_frac, args.seed)
+    if args.demo_channels.strip():
+        print(f"resolving --demo-channels {args.demo_channels!r}:")
+        demo_channel_ids = resolve_channels(args.demo_channels, channel_title, channel_to_blocks)
+        holdout_channels = set(demo_channel_ids)
+        train_channels = set(channel_to_blocks) - holdout_channels
+    else:
+        demo_channel_ids = None
+        train_channels, holdout_channels = split_channels(channel_to_blocks, args.holdout_frac, args.seed)
     print(f"train channels: {len(train_channels)}, held-out channels: {len(holdout_channels)}")
 
     all_ids = [b for ch in channel_to_blocks for b in channel_to_blocks[ch]]
@@ -326,8 +372,12 @@ def main():
     torch.save(head.state_dict(), OUT_DIR / "head.pt")
     print(f"saved head weights to {OUT_DIR / 'head.pt'}")
 
-    # a few before/after recommendation grids on held-out channels
-    demo_channels = rng.choice(sorted(holdout_channels), size=min(args.num_demo_grids, len(holdout_channels)), replace=False)
+    # before/after recommendation grids on held-out channels — use the named
+    # channels in the order given, or fall back to a random sample of the holdout
+    if demo_channel_ids is not None:
+        demo_channels = demo_channel_ids
+    else:
+        demo_channels = rng.choice(sorted(holdout_channels), size=min(args.num_demo_grids, len(holdout_channels)), replace=False)
     with torch.inference_mode():
         Z = head(E.to(device)).cpu()
     for ch in demo_channels:
