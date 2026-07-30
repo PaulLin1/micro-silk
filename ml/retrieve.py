@@ -92,7 +92,7 @@ def embed_corpus(blocks_csv, image_dir, processor, model, device, rebuild):
     ids = sorted(int(i) for i in blocks.id if (image_dir / f"{int(i)}.jpg").exists())
     print(f"embedding {len(ids)} blocks with frozen CLIP (no fine-tuning)...")
 
-    loader = DataLoader(ImageDataset(ids, image_dir, processor), batch_size=128, num_workers=4, collate_fn=collate)
+    loader = DataLoader(ImageDataset(ids, image_dir, processor), batch_size=2048, num_workers=4, collate_fn=collate)
     embeds, out_ids = [], []
     with torch.inference_mode():
         for i, (pixel_values, batch_ids) in enumerate(loader):
