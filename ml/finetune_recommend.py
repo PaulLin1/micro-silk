@@ -72,7 +72,11 @@ def load_channel_graph(channels_csv, connections_csv, blocks_csv, image_dir, min
 
     conn = conn[conn.block_id.isin(have_image)]
     channel_to_blocks = conn.groupby("channel_id")["block_id"].apply(list).to_dict()
-    channel_to_blocks = {c: b for c, b in channel_to_blocks.items() if len(b) >= min_channel_blocks}
+    # cast off numpy int64 scalars — keeps the embedding cache plain Python objects
+    channel_to_blocks = {
+        int(c): [int(b) for b in blocks]
+        for c, blocks in channel_to_blocks.items() if len(blocks) >= min_channel_blocks
+    }
     print(f"channels with >= {min_channel_blocks} downloaded blocks: {len(channel_to_blocks)}")
 
     return channel_to_blocks, channel_title
@@ -155,7 +159,8 @@ def embed_blocks(ids, image_dir, processor, model, device, rebuild):
     cache_key = hashlib.sha1(",".join(map(str, ids)).encode()).hexdigest()[:16]
     cache_path = CACHE_DIR / f"embeddings_{cache_key}.pt"
     if cache_path.exists() and not rebuild:
-        data = torch.load(cache_path)
+        # our own cache file (ids/embeddings/model name) — safe to unpickle fully
+        data = torch.load(cache_path, weights_only=False)
         print(f"loaded cached embeddings: {len(data['ids'])} blocks ({cache_path.name})")
         return data["embeddings"], data["ids"]
 
@@ -319,7 +324,7 @@ def main():
     if args.max_per_channel:
         channel_to_blocks = {
             ch: (blocks if len(blocks) <= args.max_per_channel
-                 else list(rng.choice(blocks, size=args.max_per_channel, replace=False)))
+                 else [int(b) for b in rng.choice(blocks, size=args.max_per_channel, replace=False)])
             for ch, blocks in channel_to_blocks.items()
         }
 
