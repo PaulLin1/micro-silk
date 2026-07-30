@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+
+# Exported graph CSVs — regenerate with `python -m silk.data.export_graph`
+data/
+
+# Cached base CLIP features + versioned embedding artifacts.
+# These are large and fully reproducible; never commit them.
+artifacts/
+
+# Eval reports ARE committed (they're the test record); their PNGs are not.
+reports/*.png
+
+# NOTE: taste_head.pt stays tracked but is SUPERSEDED — it is an orphan from an
+# uncommitted trainer (512->256->512, no zero-init) and nothing loads it.
+# New checkpoints are written under artifacts/<space_version>/head.pt.

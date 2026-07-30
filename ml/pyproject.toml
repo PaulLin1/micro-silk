@@ -1,7 +1,7 @@
 [project]
 name = "ml"
 version = "0.1.0"
-description = "Add your description here"
+description = "micro-silk taste embedding space: frozen CLIP + trained projection head"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,12 +10,30 @@ dependencies = [
     "pillow>=12.3.0",
     "torch>=2.13.0",
     "transformers>=5.14.1",
+    "numpy>=2.0",
+    "scipy>=1.14",
+    "scikit-learn>=1.5",
+    "psycopg[binary]>=3.2",
+    "python-dotenv>=1.0",
+    "tqdm>=4.66",
+    "umap-learn>=0.5.6",
+    # umap-learn pulls numba/llvmlite; without a floor uv resolves llvmlite 0.36,
+    # which refuses to build on Python >= 3.10.
+    "numba>=0.60",
 ]
+# NOTE: clustering uses sklearn.cluster.HDBSCAN (stdlib of scikit-learn >= 1.3)
+# rather than the standalone `hdbscan` package, which needs a Cython build.
 
 [tool.uv.sources]
-torch = { index = "pytorch-cu126" }
+# CUDA wheels on the GPU box; plain PyPI (MPS/CPU) everywhere else, so the same
+# project installs on the Mac for smoke tests. An unconditional cu126 pin makes
+# `uv sync` fail outright on macOS.
+torch = [{ index = "pytorch-cu126", marker = "sys_platform == 'linux'" }]
 
 [[tool.uv.index]]
 name = "pytorch-cu126"
 url = "https://download.pytorch.org/whl/cu126"
 explicit = true
+
+[tool.setuptools.packages.find]
+include = ["silk*"]

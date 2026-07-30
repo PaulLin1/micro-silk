@@ -8,7 +8,8 @@
     "start": "HOST=0.0.0.0 PORT=8080 react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "ingest_arena": "tsx scripts/ingest_arena.ts",
-    "download_images": "tsx scripts/download_images.ts"
+    "download_images": "tsx scripts/download_images.ts",
+    "download_metadata": "tsx scripts/download_metadata.ts"
   },
   "dependencies": {
     "@aredotna/sdk": "^0.1.1",

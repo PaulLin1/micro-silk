@@ -29,7 +29,7 @@ OUT_DIR = Path("./demo_results")
 MODEL_NAME = "openai/clip-vit-base-patch32"
 
 QUERIES = [
-    "drain gang",
+    "drain",
     "brutalist architecture",
     "y2k interface",
     "handwritten text on paper",

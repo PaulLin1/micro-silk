@@ -4,6 +4,7 @@ import "dotenv/config";
 
 const csv_path = "./blocks.csv";
 const folder_dir = "/mnt/scratch/linpaul1/micro-silk/images";
+
 await fs.mkdir(folder_dir, { recursive: true });
 
 const CONCURRENCY = 50;
