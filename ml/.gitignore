@@ -15,3 +15,7 @@ reports/*.png
 # NOTE: taste_head.pt stays tracked but is SUPERSEDED — it is an orphan from an
 # uncommitted trainer (512->256->512, no zero-init) and nothing loads it.
 # New checkpoints are written under artifacts/<space_version>/head.pt.
+
+# finetune_recommend.py outputs — reproducible, don't commit
+cache/
+recommend_demo/
