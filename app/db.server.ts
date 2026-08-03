@@ -4,6 +4,10 @@ import 'dotenv/config';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  // without this, a network-level outage (blocked port, dead route) hangs
+  // every request until the OS TCP timeout (~75s on macOS) instead of
+  // failing fast with a clear error.
+  connectionTimeoutMillis: 10_000,
 });
 
 // pg emits 'error' on idle clients that lose their connection (e.g. Neon
