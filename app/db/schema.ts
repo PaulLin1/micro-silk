@@ -7,6 +7,7 @@ import {
     text,
     uniqueIndex,
     index,
+    vector,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -35,9 +36,34 @@ export const blocks = pgTable("blocks", {
     type: text("type"), // Image / Text / Link / Media / Attachment — from block.class
     title: text("title"),
     sourceUrl: text("source_url"),
-    data: jsonb("data").notNull(),
+    imageUrl: text("image_url"), // are.na CDN asset URL, from blocks.csv — poster info comes from connections, not a per-block column
     crawledAt: timestamp("crawled_at").defaultNow().notNull(),
 });
+
+// one row per (block, embedding space) — additive/versioned so a re-embed never
+// requires an in-place overwrite; join to blocks for display
+export const blockEmbeddings = pgTable(
+    "block_embeddings",
+    {
+        id: serial("id").primaryKey(),
+        blockId: integer("block_id")
+            .notNull()
+            .references(() => blocks.id),
+        spaceVersion: text("space_version").notNull(),
+        embedding: vector("embedding", { dimensions: 512 }).notNull(),
+        crawledAt: timestamp("crawled_at").defaultNow().notNull(),
+    },
+    (t) => ({
+        uniqBlockSpace: uniqueIndex("uniq_block_embeddings_block_space").on(
+            t.blockId,
+            t.spaceVersion,
+        ),
+        hnswIdx: index("block_embeddings_hnsw_idx").using(
+            "hnsw",
+            t.embedding.op("vector_cosine_ops"),
+        ),
+    }),
+);
 
 // one row per (block, channel) co-occurrence — this table IS the training data
 export const connections = pgTable(

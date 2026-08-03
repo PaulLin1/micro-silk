@@ -125,11 +125,16 @@ async function upsertBlock(block: any) {
             type: block.type,
             title: block.title ?? null,
             sourceUrl: block.source?.url ?? null,
-            data: block,
+            imageUrl: block.image?.original?.url ?? null,
         })
         .onConflictDoUpdate({
             target: blocksTable.arenaBlockId,
-            set: { data: block },
+            set: {
+                type: block.type,
+                title: block.title ?? null,
+                sourceUrl: block.source?.url ?? null,
+                imageUrl: block.image?.original?.url ?? null,
+            },
         })
         .returning();
     return row;

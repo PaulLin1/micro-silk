@@ -92,22 +92,26 @@ across unrelated-looking Webs" (the trail-blazing / rabbit-hole idea in
 | Multi-interest / sequence user modeling (PinnerSage, PinnerFormer) | There's no per-user save history yet — no users doing anything in-app. Channel-centroid is a fine stand-in until that exists. |
 | Ads infra, generative retrieval (PinRec) | Not relevant at this scale or to this product (no ads). |
 
-## Path to production (proposed, not applied)
+## Path to production
 
 Everything above runs offline against CSVs on the GPU box. Wiring it into the
 live app means:
 
-1. **Store embeddings in Postgres** via `pgvector` — a new `block_embeddings`
-   table (`block_id`, `space_version`, `embedding vector(512)`), kept separate
-   from `blocks` so re-embeds are additive, versioned swaps (matches the
-   `space_version` discipline already used in `ml/README.md`'s fine-tuning
-   path) rather than in-place overwrites.
-2. **An API route** (`app/routes/`) doing `ORDER BY embedding <=> $1 LIMIT k`
-   for item→item and text→item, and the same centroid trick in SQL
-   (`AVG` over member embeddings, cast back to `vector`) for channel→item.
+1. **Store embeddings in Postgres** via `pgvector` — done. `block_embeddings`
+   (`block_id`, `space_version`, `embedding vector(512)`, HNSW cosine index)
+   lives in `app/db/schema.ts`, kept separate from `blocks` so re-embeds are
+   additive, versioned swaps rather than in-place overwrites. Populate it with
+   `ml/embed_to_postgres.py` (reuses `retrieve.py`'s `embed_corpus()` cache,
+   upserts by `(block_id, space_version)`, tag `clip-vit-base-patch32_base`) —
+   run the full corpus on the GPU box per `ml/README.md`'s runbook.
+2. **An API route** doing `ORDER BY embedding <=> $1 LIMIT k` for text→item —
+   done, see `app/clip.server.ts` (CLIP text tower via transformers.js,
+   `Xenova/clip-vit-base-patch32` — same weights as the Python-side model, so
+   the vectors are directly comparable) and `magicSearch()` in
+   `app/routes/search.tsx`, which falls back to plain ILIKE text search if
+   `block_embeddings` has no rows yet for the current `space_version`.
+   Item→item and channel-centroid still only exist in `retrieve.py`'s offline
+   demo.
 3. **Real edge logging** once Save/Connect exists in the UI — same
    `(item_id, board_id)` shape as `connections`, so retrieval code doesn't
-   change, only its data source does.
-
-None of this is applied yet — it's scoped here so the jump from "offline
-demo" to "live feature" is a schema migration and a route, not a redesign.
+   change, only its data source does. Not started.

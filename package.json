@@ -9,10 +9,13 @@
     "typecheck": "react-router typegen && tsc",
     "ingest_arena": "tsx scripts/ingest_arena.ts",
     "download_images": "tsx scripts/download_images.ts",
+    "load_csv": "tsx scripts/load_csv_to_postgres.ts",
     "download_metadata": "tsx scripts/download_metadata.ts"
   },
   "dependencies": {
     "@aredotna/sdk": "^0.1.1",
+    "@aws-sdk/client-s3": "^3.1099.0",
+    "@huggingface/transformers": "^4.2.0",
     "@react-router/node": "8.0.0",
     "@react-router/serve": "8.0.0",
     "csv-parse": "^7.0.1",
