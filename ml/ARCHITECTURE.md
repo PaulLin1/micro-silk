@@ -100,10 +100,14 @@ live app means:
 1. **Store embeddings in Postgres** via `pgvector` — done. `block_embeddings`
    (`block_id`, `space_version`, `embedding vector(512)`, HNSW cosine index)
    lives in `app/db/schema.ts`, kept separate from `blocks` so re-embeds are
-   additive, versioned swaps rather than in-place overwrites. Populate it with
-   `ml/embed_to_postgres.py` (reuses `retrieve.py`'s `embed_corpus()` cache,
-   upserts by `(block_id, space_version)`, tag `clip-vit-base-patch32_base`) —
-   run the full corpus on the GPU box per `ml/README.md`'s runbook.
+   additive, versioned swaps rather than in-place overwrites. Populated in two
+   steps, split the same way as `data.export_graph` (GPU box never needs
+   `DATABASE_URL`, just images):
+   `ml/embed_to_csv.py` (reuses `retrieve.py`'s `embed_corpus()` cache) writes
+   `ml/artifacts/<space_version>/embeddings.csv` on the GPU box, then
+   `ml/load_embeddings_to_postgres.py` reads that CSV and upserts it by
+   `(block_id, space_version)` wherever DB access exists. Default tag:
+   `clip-vit-base-patch32_base`.
 2. **An API route** doing `ORDER BY embedding <=> $1 LIMIT k` for text→item —
    done, see `app/clip.server.ts` (CLIP text tower via transformers.js,
    `Xenova/clip-vit-base-patch32` — same weights as the Python-side model, so
