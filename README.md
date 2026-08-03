@@ -1,87 +1,58 @@
-# Welcome to React Router!
+# micro-silk
 
-A modern, production-ready template for building full-stack React applications using React Router.
+A search app over an Are.na dataset: images are crawled from Are.na, embedded with
+a CLIP-based model, and served through both plain-text and semantic ("Magic
+Search") retrieval.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Stack
 
-## Features
+- **App**: React Router 8 (SSR), Tailwind, deployed as a Node server (see `Dockerfile` / `fly.toml`)
+- **Database**: Postgres + [pgvector](https://github.com/pgvector/pgvector), schema in `app/db/schema.ts`, migrations via [drizzle-kit](https://orm.drizzle.team/kit-docs/overview)
+- **Images**: stored in Cloudflare R2, served through `app/routes/image.tsx` / `app/r2.server.ts`
+- **Search**: `app/routes/search.tsx` embeds the query with CLIP (`app/clip.server.ts`) and ranks `block_embeddings` by cosine distance; falls back to `ILIKE` text search if no embeddings exist yet for the current space version
+- **ML pipeline**: `ml/` trains the embedding space itself — see `ml/README.md` and `ml/ARCHITECTURE.md`
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-
-## Getting Started
-
-### Installation
-
-Install the dependencies:
+## Setup
 
 ```bash
 npm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
+cp .env.example .env   # fill in DATABASE_URL, R2_*, ARENA_TOKEN
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
+## Data pipeline (rough order)
 
 ```bash
-npm run build
+npm run ingest_arena      # crawl Are.na -> {blocks,channels,connections,users}.csv
+npm run load_csv          # csv -> Postgres
+npm run download_images   # crawl image bytes
+npm run upload_to_r2      # images -> R2
+
+npm run db:push           # (first time / schema changes) apply app/db/schema.ts to Postgres
+
+cd ml && uv run python embed_to_csv.py                 # frozen CLIP -> ml/embeddings.csv
+cd ml && uv run python load_embeddings_to_postgres.py  # csv -> block_embeddings
 ```
+
+`ml/` has its own README covering the embedding-space training pipeline in depth —
+that part is decoupled from the app and only shares the Postgres schema.
+
+## Scripts
+
+| script | what it does |
+|---|---|
+| `npm run dev` | dev server with HMR |
+| `npm run build` / `npm run start` | production build / serve |
+| `npm run typecheck` | `react-router typegen` + `tsc` |
+| `npm run db:generate` | generate a drizzle migration from `app/db/schema.ts` |
+| `npm run db:push` | push `app/db/schema.ts` directly to the configured `DATABASE_URL` |
+| `npm run ingest_arena` | crawl Are.na into `*.csv` |
+| `npm run load_csv` | load the crawl CSVs into Postgres |
+| `npm run download_images` | download block image bytes locally |
+| `npm run upload_to_r2` | upload downloaded images to R2 |
 
 ## Deployment
 
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+Ships as a multi-stage Docker image (`Dockerfile`) to Fly.io (`fly.toml`). The
+container only needs `DATABASE_URL` and the `R2_*` / `ARENA_TOKEN` env vars set on
+the target platform — nothing is baked into the image.

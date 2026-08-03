@@ -7,17 +7,19 @@
     "dev": "react-router dev",
     "start": "HOST=0.0.0.0 PORT=8080 react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
     "ingest_arena": "tsx scripts/ingest_arena.ts",
     "download_images": "tsx scripts/download_images.ts",
     "load_csv": "tsx scripts/load_csv_to_postgres.ts",
-    "download_metadata": "tsx scripts/download_metadata.ts"
+    "upload_to_r2": "tsx scripts/upload_to_r2.ts"
   },
   "dependencies": {
     "@aredotna/sdk": "^0.1.1",
     "@aws-sdk/client-s3": "^3.1099.0",
     "@huggingface/transformers": "^4.2.0",
-    "@react-router/node": "8.0.0",
-    "@react-router/serve": "8.0.0",
+    "@react-router/node": "8.3.0",
+    "@react-router/serve": "8.3.0",
     "csv-parse": "^7.0.1",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
@@ -25,10 +27,10 @@
     "pg": "^8.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router": "8.0.0"
+    "react-router": "8.3.0"
   },
   "devDependencies": {
-    "@react-router/dev": "8.0.0",
+    "@react-router/dev": "8.3.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22",
     "@types/pg": "^8.20.0",

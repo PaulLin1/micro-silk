@@ -36,7 +36,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--csv",
-        default=str(ML_ROOT / "artifacts" / DEFAULT_SPACE_VERSION / "embeddings.csv"),
+        default=str(ML_ROOT / "embeddings.csv"),
     )
     ap.add_argument("--batch-size", type=int, default=1000)
     ap.add_argument("--database-url", default=os.environ.get("DATABASE_URL"))
