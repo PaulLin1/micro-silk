@@ -40,6 +40,9 @@ except ImportError:
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MODEL_NAME = "openai/clip-vit-base-patch32"
 CACHE_PATH = Path(__file__).resolve().parent / "cache" / "base_embeddings.pt"
+# written by embed_to_csv_finetuned.py's train_head() — not imported from
+# there directly, since that module imports *from* this one
+HEAD_CACHE_PATH = Path(__file__).resolve().parent / "cache" / "projection_head.pt"
 OUT_DIR = Path(__file__).resolve().parent / "retrieve_demo"
 
 
@@ -82,15 +85,31 @@ def collate(batch):
 
 
 def embed_corpus(blocks_csv, image_dir, processor, model, device, rebuild):
+    blocks = pd.read_csv(blocks_csv, usecols=["id"])
+
     if CACHE_PATH.exists() and not rebuild:
         data = torch.load(CACHE_PATH, weights_only=False)
         if data.get("model") == MODEL_NAME:
             print(f"loaded cached embeddings: {len(data['ids'])} blocks")
+            # the cache freezes whatever image_dir had on disk the day it was
+            # built — a later image download (or a new channel entirely, like
+            # the drain-gang one that shipped with 0 embeddings for months
+            # because nobody re-ran with --rebuild) silently stays invisible
+            # to every script that shares this cache until someone notices.
+            missing = len(blocks) - len(data["ids"])
+            if missing > 0.02 * len(blocks):
+                print(
+                    f"WARNING: cache covers {len(data['ids'])}/{len(blocks)} blocks.csv rows "
+                    f"({missing} missing, {missing / len(blocks):.1%}) — if images were downloaded "
+                    f"since this cache was built, pass --rebuild to pick them up"
+                )
             return data["embeddings"], data["ids"]
 
-    blocks = pd.read_csv(blocks_csv, usecols=["id"])
     ids = sorted(int(i) for i in blocks.id if (image_dir / f"{int(i)}.jpg").exists())
+    missing = len(blocks) - len(ids)
     print(f"embedding {len(ids)} blocks with frozen CLIP (no fine-tuning)...")
+    if missing:
+        print(f"WARNING: {missing}/{len(blocks)} blocks.csv rows have no local image file under {image_dir} — skipped, not an error")
 
     loader = DataLoader(ImageDataset(ids, image_dir, processor), batch_size=2048, num_workers=4, collate_fn=collate)
     embeds, out_ids = [], []
@@ -106,6 +125,20 @@ def embed_corpus(blocks_csv, image_dir, processor, model, device, rebuild):
     CACHE_PATH.parent.mkdir(exist_ok=True)
     torch.save({"embeddings": embeddings, "ids": out_ids, "model": MODEL_NAME}, CACHE_PATH)
     return embeddings, out_ids
+
+
+def apply_finetuned_head(E):
+    """Reproject frozen-CLIP embeddings through the trained channel-contrastive
+    head, so --space finetuned can be tested here — offline, against a saved
+    grid image — before ever touching Postgres or the website."""
+    if not HEAD_CACHE_PATH.exists():
+        raise SystemExit(
+            f"no trained projection head at {HEAD_CACHE_PATH} — run embed_to_csv_finetuned.py first"
+        )
+    ckpt = torch.load(HEAD_CACHE_PATH, weights_only=False)
+    print(f"applying projection head trained for space_version={ckpt.get('space_version')!r}")
+    weight = ckpt["state_dict"]["linear.weight"]
+    return F.normalize(E @ weight.T, dim=-1)
 
 
 def load_channel_to_blocks(connections_csv, id2idx):
@@ -188,6 +221,12 @@ def main():
     ap.add_argument("--channel", type=int, help="board-centroid recommend: channel -> item")
     ap.add_argument("-k", type=int, default=9)
     ap.add_argument("--rebuild", action="store_true")
+    ap.add_argument(
+        "--space",
+        choices=["base", "finetuned"],
+        default="base",
+        help="base = frozen CLIP; finetuned = base reprojected through cache/projection_head.pt",
+    )
     ap.add_argument("--grid", action="store_true", help="save a result grid image to retrieve_demo/")
     args = ap.parse_args()
 
@@ -204,21 +243,23 @@ def main():
         p.requires_grad_(False)
 
     E, ids = embed_corpus(args.blocks_csv, image_dir, processor, model, device, args.rebuild)
+    if args.space == "finetuned":
+        E = apply_finetuned_head(E)
     id2idx = {block_id: i for i, block_id in enumerate(ids)}
 
     if args.text:
         results = text_search(args.text, E, ids, processor, model, device, args.k)
-        title = f"text: {args.text!r}"
-        tag = f"text_{''.join(c if c.isalnum() else '_' for c in args.text.lower())[:40]}"
+        title = f"[{args.space}] text: {args.text!r}"
+        tag = f"text_{''.join(c if c.isalnum() else '_' for c in args.text.lower())[:40]}_{args.space}"
     elif args.item:
         results = item_search(args.item, E, ids, id2idx, args.k)
-        title = f"related to block {args.item}"
-        tag = f"item_{args.item}"
+        title = f"[{args.space}] related to block {args.item}"
+        tag = f"item_{args.item}_{args.space}"
     else:
         channel_to_blocks = load_channel_to_blocks(args.connections_csv, id2idx)
         results = channel_search(args.channel, E, ids, id2idx, channel_to_blocks, args.k)
-        title = f"recommended for channel {args.channel}"
-        tag = f"channel_{args.channel}"
+        title = f"[{args.space}] recommended for channel {args.channel}"
+        tag = f"channel_{args.channel}_{args.space}"
 
     print(f"\n{title}:")
     for block_id, score in results:

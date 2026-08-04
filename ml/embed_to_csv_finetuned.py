@@ -36,9 +36,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ML_ROOT = Path(__file__).resolve().parent
 HEAD_CACHE = ML_ROOT / "cache" / "projection_head.pt"
 
-# bump alongside the training setup below, same reason base_embeddings' name
-# is versioned: old and new vectors must never get compared as the same space
-DEFAULT_SPACE_VERSION = "clip-vit-base-patch32_channels-ft"
+# v2: the channel-contrastive loss alone had no reason to stay anywhere near
+# CLIP's original calibration between image and text embeddings — verified
+# it drifted enough that fine-tuned image vectors scored higher against
+# *arbitrary* text queries than the actual matching images did, regardless
+# of relevance. v2 adds an anchor term (see train_head) to fix that; bump
+# alongside the training setup below, same reason base_embeddings' name is
+# versioned: old and new vectors must never get compared as the same space
+DEFAULT_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v2"
 
 
 class ProjectionHead(nn.Module):
@@ -77,7 +82,18 @@ def nt_xent_loss(anchor_embeds, positive_embeds, temperature):
     return (F.cross_entropy(logits, targets) + F.cross_entropy(logits.T, targets)) / 2
 
 
-def train_head(E, channel_to_blocks, id2idx, epochs, steps_per_epoch, channels_per_batch, lr, temperature, device, seed):
+def anchor_loss(projected, original):
+    """Penalize drifting away from the block's own frozen-CLIP position.
+    nt_xent alone is free to rotate the space however it likes to separate
+    channels — including directions that just happen to sit closer to
+    arbitrary CLIP text embeddings for no semantic reason, which is exactly
+    what made magic search on the fine-tuned space return "sunset"/"y2k"/
+    "moodboard" results with no relevance to the query. Both are already
+    unit vectors, so cosine similarity is a plain dot product."""
+    return 1 - (projected * original).sum(dim=-1).mean()
+
+
+def train_head(E, channel_to_blocks, id2idx, epochs, steps_per_epoch, channels_per_batch, lr, temperature, anchor_weight, device, seed):
     rng = random.Random(seed)
     channel_indices = {
         c: [id2idx[b] for b in blocks if b in id2idx] for c, blocks in channel_to_blocks.items()
@@ -92,15 +108,20 @@ def train_head(E, channel_to_blocks, id2idx, epochs, steps_per_epoch, channels_p
     opt = torch.optim.Adam(head.parameters(), lr=lr)
 
     for epoch in range(epochs):
-        total = 0.0
+        total_nt, total_anchor = 0.0, 0.0
         for _ in range(steps_per_epoch):
             anchor_idx, positive_idx = sample_pairs(channel_indices, eligible, channels_per_batch, rng)
+            anchor_orig, positive_orig = E[anchor_idx.to(device)], E[positive_idx.to(device)]
             opt.zero_grad()
-            loss = nt_xent_loss(head(E[anchor_idx.to(device)]), head(E[positive_idx.to(device)]), temperature)
+            anchor_out, positive_out = head(anchor_orig), head(positive_orig)
+            nt_loss = nt_xent_loss(anchor_out, positive_out, temperature)
+            drift = (anchor_loss(anchor_out, anchor_orig) + anchor_loss(positive_out, positive_orig)) / 2
+            loss = nt_loss + anchor_weight * drift
             loss.backward()
             opt.step()
-            total += loss.item()
-        print(f"  epoch {epoch + 1}/{epochs}  loss {total / steps_per_epoch:.4f}")
+            total_nt += nt_loss.item()
+            total_anchor += drift.item()
+        print(f"  epoch {epoch + 1}/{epochs}  nt_xent {total_nt / steps_per_epoch:.4f}  anchor_drift {total_anchor / steps_per_epoch:.4f}")
 
     return head.cpu().eval()
 
@@ -125,6 +146,12 @@ def main():
     ap.add_argument("--channels-per-batch", type=int, default=64, help="= batch size, one pair per channel")
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--temperature", type=float, default=0.1)
+    ap.add_argument(
+        "--anchor-weight",
+        type=float,
+        default=2.0,
+        help="how strongly to penalize drifting from the original CLIP embedding — 0 reproduces the old (uncalibrated) behavior",
+    )
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
@@ -147,7 +174,7 @@ def main():
     head = train_head(
         E, channel_to_blocks, id2idx,
         args.epochs, args.steps_per_epoch, args.channels_per_batch, args.lr, args.temperature,
-        device, args.seed,
+        args.anchor_weight, device, args.seed,
     )
 
     HEAD_CACHE.parent.mkdir(exist_ok=True)
