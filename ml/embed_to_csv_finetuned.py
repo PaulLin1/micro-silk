@@ -2,18 +2,25 @@
 embed_to_csv_finetuned.py — same output shape as embed_to_csv.py (block_id,
 space_version, embedding), but tailored to Silk instead of generic CLIP.
 
-Frozen CLIP knows what things look like, not what they mean to us. A photo of
-a candle and a photo of a Bladee flyer aren't visually similar, but if they
-live in the same channel, someone decided they're the same *idea* — that's
-curation, and it's the one signal Silk actually has that off-the-shelf CLIP
-doesn't. connections.csv (block_id, channel_id) is the label: two blocks in
-the same channel are a positive pair, everything else in the batch is a
-negative — the same contrastive setup CLIP itself was trained with, just
-swapping "image, caption" for "block, channel-mate".
+v1/v2 trained the projection head on image-image pairs: two blocks in the
+same channel are a positive pair, CLIP-style, nothing else. That taught the
+head "these two blocks were curated together" but never once involved what
+the channel was actually *about* — so a text query like "drain gang" had
+nothing trained to connect it to that channel's images. Verified: v1's loss
+barely moved (image content within a channel can be wildly heterogeneous —
+photos, memes, screenshots, no shared pixel structure), and v2's anchor term
+(kept, see anchor_loss) couldn't fix a problem that was never about drift.
 
-CLIP stays frozen. Only a small linear head on top of it trains, and it
-trains directly on the cached 512-dim vectors from retrieve.py's cache — no
-image forward passes, no GPU required, done in seconds.
+v3 uses the caption that was sitting right there unused: channels.csv's
+`title` (e.g. "Drain Gang - Collection Archive"). Positive pairs are now
+(channel title text, member image) — the exact same recipe CLIP itself was
+pretrained on, just swapping "caption" for "channel title". This directly
+teaches the model what a text query like "drain gang" should retrieve,
+instead of hoping image-image clustering happens to transfer.
+
+CLIP stays frozen (both towers). Only a small linear head on the image side
+trains, and it trains directly on cached 512-dim vectors — no image forward
+passes after the one-time corpus embed, no GPU required, done in seconds.
 
 Usage:
   cd ml && uv run python embed_to_csv_finetuned.py
@@ -25,25 +32,23 @@ import os
 import random
 from pathlib import Path
 
+import pandas as pd
 import torch
 import torch.nn.functional as F
 from torch import nn
 from transformers import CLIPModel, CLIPProcessor
 
-from retrieve import MODEL_NAME, embed_corpus, get_device, load_channel_to_blocks
+from retrieve import MODEL_NAME, embed_corpus, extract_features, get_device, load_channel_to_blocks
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ML_ROOT = Path(__file__).resolve().parent
 HEAD_CACHE = ML_ROOT / "cache" / "projection_head.pt"
 
-# v2: the channel-contrastive loss alone had no reason to stay anywhere near
-# CLIP's original calibration between image and text embeddings — verified
-# it drifted enough that fine-tuned image vectors scored higher against
-# *arbitrary* text queries than the actual matching images did, regardless
-# of relevance. v2 adds an anchor term (see train_head) to fix that; bump
-# alongside the training setup below, same reason base_embeddings' name is
-# versioned: old and new vectors must never get compared as the same space
-DEFAULT_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v2"
+# v3: switched the training signal from image-image (channel co-membership)
+# to image-text (channel title -> member image) — see module docstring.
+# bump alongside the training setup below, same reason base_embeddings' name
+# is versioned: old and new vectors must never get compared as the same space
+DEFAULT_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v3"
 
 
 class ProjectionHead(nn.Module):
@@ -61,24 +66,46 @@ class ProjectionHead(nn.Module):
         return F.normalize(self.linear(x), dim=-1)
 
 
-def sample_pairs(channel_indices, eligible, channels_per_batch, rng):
-    """One (anchor, positive) pair per sampled channel — two blocks a curator
-    put in the same channel. Everything else in the batch stands in as
-    negatives, CLIP-style."""
+def load_channel_captions(channels_csv) -> dict[int, str]:
+    """channel id -> "title. description" (title alone when there's no
+    description) — the caption CLIP's text tower embeds as this channel's
+    anchor during training."""
+    df = pd.read_csv(channels_csv, usecols=["id", "title", "description"])
+    captions = {}
+    for row in df.itertuples():
+        title = row.title if isinstance(row.title, str) and row.title.strip() else None
+        if not title:
+            continue
+        desc = row.description if isinstance(row.description, str) and row.description.strip() else None
+        captions[int(row.id)] = f"{title}. {desc}" if desc else title
+    return captions
+
+
+def embed_channel_captions(captions: dict[int, str], processor, model, device) -> dict[int, torch.Tensor]:
+    ids = list(captions.keys())
+    with torch.inference_mode():
+        inputs = processor(text=[captions[c] for c in ids], return_tensors="pt", padding=True, truncation=True).to(device)
+        feats = extract_features(model.get_text_features(**inputs))
+        feats = F.normalize(feats.to(torch.float32), dim=-1).cpu()
+    return {c: feats[i] for i, c in enumerate(ids)}
+
+
+def sample_batch(channel_indices, channel_text, eligible, channels_per_batch, rng):
+    """One (member image, channel-title text) pair per sampled channel —
+    every other channel's title in the batch stands in as a negative,
+    exactly the recipe CLIP itself was pretrained on."""
     chosen = rng.sample(eligible, min(channels_per_batch, len(eligible)))
-    anchors, positives = [], []
-    for c in chosen:
-        a, p = rng.sample(channel_indices[c], 2)
-        anchors.append(a)
-        positives.append(p)
-    return torch.tensor(anchors), torch.tensor(positives)
+    img_idx = [rng.choice(channel_indices[c]) for c in chosen]
+    text_batch = torch.stack([channel_text[c] for c in chosen])
+    return torch.tensor(img_idx), text_batch
 
 
-def nt_xent_loss(anchor_embeds, positive_embeds, temperature):
-    """CLIP's own loss, reused: for each anchor, its channel-mate should
-    score higher than every other block in the batch, in both directions."""
-    logits = anchor_embeds @ positive_embeds.T / temperature
-    targets = torch.arange(len(anchor_embeds), device=logits.device)
+def nt_xent_loss(image_embeds, text_embeds, temperature):
+    """CLIP's own loss, reused: for each image, its channel's title should
+    score higher than every other channel's title in the batch, and vice
+    versa."""
+    logits = image_embeds @ text_embeds.T / temperature
+    targets = torch.arange(len(image_embeds), device=logits.device)
     return (F.cross_entropy(logits, targets) + F.cross_entropy(logits.T, targets)) / 2
 
 
@@ -93,15 +120,18 @@ def anchor_loss(projected, original):
     return 1 - (projected * original).sum(dim=-1).mean()
 
 
-def train_head(E, channel_to_blocks, id2idx, epochs, steps_per_epoch, channels_per_batch, lr, temperature, anchor_weight, device, seed):
+def train_head(E, channel_to_blocks, id2idx, channel_captions, processor, model, epochs, steps_per_epoch, channels_per_batch, lr, temperature, anchor_weight, device, seed):
     rng = random.Random(seed)
     channel_indices = {
         c: [id2idx[b] for b in blocks if b in id2idx] for c, blocks in channel_to_blocks.items()
     }
-    eligible = [c for c, idxs in channel_indices.items() if len(idxs) >= 2]
-    if not eligible:
-        raise SystemExit("no channel has >=2 blocks with cached embeddings — nothing to fine-tune on")
-    print(f"{len(eligible)} channels usable as positive-pair sources")
+    eligible_captioned = {c: cap for c, cap in channel_captions.items() if channel_indices.get(c)}
+    if not eligible_captioned:
+        raise SystemExit("no channel has both a title and >=1 block with a cached embedding — nothing to fine-tune on")
+    print(f"{len(eligible_captioned)} channels usable (have a title and >=1 embedded member)")
+
+    channel_text = embed_channel_captions(eligible_captioned, processor, model, device)
+    eligible = list(eligible_captioned.keys())
 
     E = E.to(device)
     head = ProjectionHead(E.shape[1]).to(device)
@@ -110,12 +140,12 @@ def train_head(E, channel_to_blocks, id2idx, epochs, steps_per_epoch, channels_p
     for epoch in range(epochs):
         total_nt, total_anchor = 0.0, 0.0
         for _ in range(steps_per_epoch):
-            anchor_idx, positive_idx = sample_pairs(channel_indices, eligible, channels_per_batch, rng)
-            anchor_orig, positive_orig = E[anchor_idx.to(device)], E[positive_idx.to(device)]
+            img_idx, text_batch = sample_batch(channel_indices, channel_text, eligible, channels_per_batch, rng)
+            img_orig, text_batch = E[img_idx.to(device)], text_batch.to(device)
             opt.zero_grad()
-            anchor_out, positive_out = head(anchor_orig), head(positive_orig)
-            nt_loss = nt_xent_loss(anchor_out, positive_out, temperature)
-            drift = (anchor_loss(anchor_out, anchor_orig) + anchor_loss(positive_out, positive_orig)) / 2
+            img_out = head(img_orig)
+            nt_loss = nt_xent_loss(img_out, text_batch, temperature)
+            drift = anchor_loss(img_out, img_orig)
             loss = nt_loss + anchor_weight * drift
             loss.backward()
             opt.step()
@@ -134,6 +164,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--blocks-csv", default=str(REPO_ROOT / "blocks.csv"))
     ap.add_argument("--connections-csv", default=str(REPO_ROOT / "connections.csv"))
+    ap.add_argument("--channels-csv", default=str(REPO_ROOT / "channels.csv"))
     ap.add_argument(
         "--image-dir",
         default=os.environ.get("SILK_IMAGE_DIR", "/mnt/scratch/linpaul1/micro-silk/images"),
@@ -149,8 +180,8 @@ def main():
     ap.add_argument(
         "--anchor-weight",
         type=float,
-        default=2.0,
-        help="how strongly to penalize drifting from the original CLIP embedding — 0 reproduces the old (uncalibrated) behavior",
+        default=0.5,
+        help="how strongly to penalize drifting from the original CLIP embedding — too high and it just reproduces frozen CLIP, too low and v2's uncalibrated-drift problem can come back",
     )
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
@@ -169,10 +200,11 @@ def main():
     E, ids = embed_corpus(args.blocks_csv, Path(args.image_dir), processor, model, device, args.rebuild)
     id2idx = {block_id: i for i, block_id in enumerate(ids)}
     channel_to_blocks = load_channel_to_blocks(args.connections_csv, id2idx)
+    channel_captions = load_channel_captions(args.channels_csv)
 
-    print("training projection head on channel co-membership...")
+    print("training projection head on channel title -> member image pairs...")
     head = train_head(
-        E, channel_to_blocks, id2idx,
+        E, channel_to_blocks, id2idx, channel_captions, processor, model,
         args.epochs, args.steps_per_epoch, args.channels_per_batch, args.lr, args.temperature,
         args.anchor_weight, device, args.seed,
     )
