@@ -15,9 +15,9 @@ WORKDIR /app
 RUN npm run build
 
 FROM node:24-slim
-COPY ./package.json package-lock.json /app/
-COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-COPY --from=build-env /app/build /app/build
+COPY --chown=node:node ./package.json package-lock.json /app/
+COPY --chown=node:node --from=production-dependencies-env /app/node_modules /app/node_modules
+COPY --chown=node:node --from=build-env /app/build /app/build
 WORKDIR /app
 USER node
 CMD ["npm", "run", "start"]
