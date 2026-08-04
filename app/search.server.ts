@@ -5,7 +5,7 @@ import { embedText, toVectorLiteral } from "~/clip.server";
 
 // must match ml/load_embeddings_to_postgres.py's DEFAULT_SPACE_VERSION — a
 // different string here would silently compare against zero rows, not an error
-export const MAGIC_SEARCH_SPACE_VERSION = "clip-vit-base-patch32_base";
+export const MAGIC_SEARCH_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v3";
 
 // blocks has no per-block "posted by" column — a block's poster is whoever
 // connected it to a channel, which only exists in connections.data. Take the
