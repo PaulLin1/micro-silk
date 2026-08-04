@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
     pgTable,
     integer,
@@ -9,6 +10,10 @@ import {
     index,
     vector,
 } from "drizzle-orm/pg-core";
+
+// keep in sync with MAGIC_SEARCH_SPACE_VERSION in app/routes/search.tsx —
+// the space actually served to users right now
+const LIVE_SPACE_VERSION = "clip-vit-base-patch32_base";
 
 export const users = pgTable("users", {
     id: serial("id").primaryKey(),
@@ -58,10 +63,19 @@ export const blockEmbeddings = pgTable(
             t.blockId,
             t.spaceVersion,
         ),
-        hnswIdx: index("block_embeddings_hnsw_idx").using(
-            "hnsw",
-            t.embedding.op("vector_cosine_ops"),
-        ),
+        // partial, not global: an HNSW index can't push a WHERE space_version
+        // filter down into the graph search, so with >1 space's vectors
+        // living in one index, ORDER BY embedding <=> ... LIMIT k can walk
+        // right past every row in the space actually being queried and
+        // return zero results — no amount of ef_search/iterative_scan tuning
+        // fixes that, since the *other* space's vectors can legitimately
+        // dominate the global ranking for a given query. Scoping the index
+        // to the one space search.tsx reads keeps ANN search correct; a
+        // future space_version bump needs a new partial index (and this
+        // constant updated), same as it already needs a full re-embed.
+        hnswIdx: index("block_embeddings_hnsw_idx")
+            .using("hnsw", t.embedding.op("vector_cosine_ops"))
+            .where(sql`${t.spaceVersion} = ${LIVE_SPACE_VERSION}`),
     }),
 );
 

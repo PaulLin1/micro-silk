@@ -4,4 +4,6 @@ export default [
     index("routes/home.tsx"),
     route("i/:id", "routes/image.tsx"),
     route("search", "routes/search.tsx"),
+    route("chats", "routes/chats.tsx"),
+
 ] satisfies RouteConfig;

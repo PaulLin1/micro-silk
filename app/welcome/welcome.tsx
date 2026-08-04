@@ -4,8 +4,9 @@ import { Sidebar } from "~/components/Sidebar";
 import { PostGrid, type Block } from "~/components/PostGrid";
 
 const topNavItems = [
-    { name: "Staff Picks", to: "/" },
-    { name: "Recent", to: "/recent" },
+    { name: "Feed", to: "/" },
+    // { name: "Staff Picks", to: "/" },
+    // { name: "Recent", to: "/recent" },
 ];
 
 export function Welcome({ initialBlocks, initialSeed }: { initialBlocks: Block[]; initialSeed: string }) {
