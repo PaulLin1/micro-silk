@@ -137,8 +137,14 @@ def apply_finetuned_head(E):
         )
     ckpt = torch.load(HEAD_CACHE_PATH, weights_only=False)
     print(f"applying projection head trained for space_version={ckpt.get('space_version')!r}")
-    weight = ckpt["state_dict"]["linear.weight"]
-    return F.normalize(E @ weight.T, dim=-1)
+    sd = ckpt["state_dict"]
+    if "linear.weight" in sd:
+        # v2/v4 and earlier: plain linear map, no bias
+        return F.normalize(E @ sd["linear.weight"].T, dim=-1)
+    # v5+: residual bottleneck adapter — mirrors ProjectionHead.forward exactly
+    hidden = F.gelu(E @ sd["fc1.weight"].T + sd["fc1.bias"])
+    residual = hidden @ sd["fc2.weight"].T + sd["fc2.bias"]
+    return F.normalize(E + residual, dim=-1)
 
 
 def load_channel_to_blocks(connections_csv, id2idx):

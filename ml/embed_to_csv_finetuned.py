@@ -23,20 +23,30 @@ channel, so a channel with a recurring visual subtype (a merch shirt photo
 reposted a dozen times in "Drain Gang") got that subtype reinforced on a
 large fraction of the steps that touched it, at the expense of the channel's
 actually-diverse content. Nothing regularized against this, and there was no
-way to even tell it was happening beyond eyeballing a 9-image grid. v4 fixes
-all three:
-  - each step samples --images-per-channel members per channel (not 1), so a
-    single recurring image can't dominate that step's gradient
-  - Adam gets weight decay, to discourage the head from carving out a narrow
-    direction that fits one frequent subtype
-  - a held-out split: --val-fraction of each channel's members are *never*
-    trained on, then recall@k is reported for train vs. held-out members
-    separately at the end. Train-high/held-out-low is the actual, measured
-    signature of overfitting — not a symptom you have to eyeball.
+way to even tell it was happening beyond eyeballing a 9-image grid. v4 added
+multi-image sampling, weight decay, and a held-out recall@k check — but the
+measured result was recall@50 of 8.3% on TRAIN members, with the loss flat
+from epoch ~15 to 50. That's not overfitting anymore, that's a model that
+isn't learning enough to begin with. Two real capacity problems:
 
-CLIP stays frozen (both towers). Only a small linear head on the image side
-trains, and it trains directly on cached 512-dim vectors — no image forward
-passes after the one-time corpus embed, no GPU required, done in seconds.
+  - only 32 channels' worth of negatives per step (--channels-per-batch) is a
+    weak, noisy contrastive signal — real CLIP-style training leans hard on
+    large in-batch negative counts. Bumped the default way up (this is free:
+    it's 512-dim vector math, not image forward passes).
+  - a single 512x512 linear map has to simultaneously (a) pull ~500 distinct
+    channels' worth of images toward ~500 distinct points and (b) stay close
+    to its identity-initialized starting position via anchor_loss — those two
+    pressures fight each other, and a plain linear map doesn't have much
+    slack to satisfy both. v5 replaces it with a small residual adapter (see
+    ProjectionHead): a 2-layer MLP bottleneck added on top of the identity
+    path, zero-initialized so training starts as an *exact* identity function
+    architecturally, not just approximately via a loss term. It can carve out
+    nonlinear per-region adjustments without the tug-of-war a single matrix
+    was stuck in, so anchor_weight can also come down.
+
+CLIP stays frozen (both towers). Only a small head on the image side trains,
+and it trains directly on cached 512-dim vectors — no image forward passes
+after the one-time corpus embed, no GPU required, done in seconds.
 
 Usage:
   cd ml && uv run python embed_to_csv_finetuned.py
@@ -60,26 +70,34 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ML_ROOT = Path(__file__).resolve().parent
 HEAD_CACHE = ML_ROOT / "cache" / "projection_head.pt"
 
-# v4: multi-image sampling + weight decay against overfitting to a channel's
-# most-repeated visual subtype — see module docstring. bump alongside the
-# training setup below, same reason base_embeddings' name is versioned: old
-# and new vectors must never get compared as the same space
-DEFAULT_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v4"
+# v5: residual MLP head + more in-batch negatives, against underfitting (v4
+# plateaued at 8.3% train recall@50) — see module docstring. bump alongside
+# the training setup below, same reason base_embeddings' name is versioned:
+# old and new vectors must never get compared as the same space
+DEFAULT_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v5"
 
 
 class ProjectionHead(nn.Module):
-    """One linear layer, identity-initialized so training starts from the
-    base CLIP space and only bends it towards channel structure, rather than
-    reinventing the space from a random init."""
+    """A residual bottleneck adapter, zero-initialized: output = normalize(x
+    + fc2(gelu(fc1(x)))), and fc2 starts at all zeros, so this is an *exact*
+    identity function at step 0 — not merely close, the way a plain linear
+    layer initialized to the identity matrix only stays close to identity
+    under small gradient steps. A single linear map has to satisfy "pull ~500
+    channels toward ~500 distinct points" and "don't drift from identity" as
+    one global rotation; this gives it a nonlinear per-region adjustment
+    instead, which is why anchor_weight can be lower here than in the plain-
+    linear version."""
 
-    def __init__(self, dim: int = 512):
+    def __init__(self, dim: int = 512, hidden: int = 256):
         super().__init__()
-        self.linear = nn.Linear(dim, dim, bias=False)
+        self.fc1 = nn.Linear(dim, hidden)
+        self.fc2 = nn.Linear(hidden, dim)
         with torch.no_grad():
-            self.linear.weight.copy_(torch.eye(dim))
+            self.fc2.weight.zero_()
+            self.fc2.bias.zero_()
 
     def forward(self, x):
-        return F.normalize(self.linear(x), dim=-1)
+        return F.normalize(x + self.fc2(F.gelu(self.fc1(x))), dim=-1)
 
 
 def load_channel_captions(channels_csv) -> dict[int, str]:
@@ -225,10 +243,18 @@ def train_head(E, channel_to_blocks, id2idx, channel_captions, processor, model,
     train_recalls, val_recalls = evaluate_recall(head, E, channel_text, train_indices, val_indices, eval_k, device)
     if val_recalls:
         mean = lambda xs: sum(xs) / len(xs)
+        train_mean, val_mean = mean(train_recalls), mean(val_recalls)
+        random_baseline = eval_k / E.shape[0]
+        verdict = (
+            "looks healthy — train and held-out are close"
+            if val_mean > train_mean * 0.5
+            else "still overfitting — memorizing specific train images rather than the channel's concept"
+            if train_mean > random_baseline * 5
+            else "underfitting — even train recall is barely above chance; needs more capacity/negatives/steps, not less overfitting"
+        )
         print(
-            f"recall@{eval_k}: train members {mean(train_recalls):.1%} "
-            f"vs. held-out members {mean(val_recalls):.1%}"
-            f"{' — held-out is much lower, this is still overfitting' if mean(val_recalls) < mean(train_recalls) * 0.5 else ''}"
+            f"recall@{eval_k}: train members {train_mean:.1%} vs. held-out members {val_mean:.1%} "
+            f"(random baseline ~{random_baseline:.2%}) — {verdict}"
         )
 
     return head.cpu().eval()
@@ -252,7 +278,12 @@ def main():
     ap.add_argument("--rebuild", action="store_true", help="recompute base CLIP embeddings instead of using the cache")
     ap.add_argument("--epochs", type=int, default=15)
     ap.add_argument("--steps-per-epoch", type=int, default=200)
-    ap.add_argument("--channels-per-batch", type=int, default=32, help="distinct channels sampled per step")
+    ap.add_argument(
+        "--channels-per-batch",
+        type=int,
+        default=256,
+        help="distinct channels (= in-batch negatives) sampled per step — this is cheap (512-dim vector math, no images), so err high; v4's 32 was a weak, noisy contrastive signal",
+    )
     ap.add_argument(
         "--images-per-channel",
         type=int,
@@ -265,8 +296,8 @@ def main():
     ap.add_argument(
         "--anchor-weight",
         type=float,
-        default=0.5,
-        help="how strongly to penalize drifting from the original CLIP embedding — too high and it just reproduces frozen CLIP, too low and v2's uncalibrated-drift problem can come back",
+        default=0.2,
+        help="how strongly to penalize drifting from the original CLIP embedding — the residual head (v5) is architecturally biased toward identity already, so this can be lower than the plain-linear version needed",
     )
     ap.add_argument(
         "--val-fraction",
