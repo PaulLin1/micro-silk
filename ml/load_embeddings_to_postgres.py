@@ -22,7 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ML_ROOT = Path(__file__).resolve().parent
 load_dotenv(REPO_ROOT / ".env")
 
-DEFAULT_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v3"
+DEFAULT_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v5"
 
 
 def to_vector_literal(space_separated_embedding: str) -> str:
