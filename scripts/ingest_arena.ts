@@ -9,7 +9,7 @@ import {
     channels as channelsTable,
     users as usersTable,
     connections as connectionsTable,
-} from "~/db/schema";
+} from "~/lib/schema";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool);

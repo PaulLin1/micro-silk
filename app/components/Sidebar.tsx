@@ -1,4 +1,7 @@
-import { NavLink } from "react-router";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const navItems = [
     { name: "Home", to: "/" },
@@ -7,9 +10,11 @@ const navItems = [
 ];
 
 export function Sidebar() {
+    const pathname = usePathname();
+
     return (
         <aside className="sticky top-0 flex flex-col w-72 h-screen p-5 gap-5 shrink-0">
-            <img className="w-10 h-10" src="logo.png" alt="Silk logo" />
+            <img className="w-10 h-10" src="/logo.png" alt="Silk logo" />
 
             <div className="flex flex-col items-center gap-2 w-full rounded-xl bg-[#131315] p-2">
                 <button className="w-full rounded-xl h-10 bg-[#212123] border border-[#333334] flex items-center justify-center transition-colors">
@@ -21,22 +26,25 @@ export function Sidebar() {
             </div>
 
             <div className="flex-1 space-y-1">
-                {navItems.map((item) => (
-                    <NavLink
-                        key={item.name}
-                        to={item.to}
-                        end={item.to === "/"}
-                        className={({ isActive }) =>
-                            `flex h-10 w-full items-center rounded-xl px-4 transition-colors ${
+                {navItems.map((item) => {
+                    const isActive =
+                        item.to === "/"
+                            ? pathname === "/"
+                            : pathname === item.to || pathname.startsWith(`${item.to}/`);
+                    return (
+                        <Link
+                            key={item.name}
+                            href={item.to}
+                            className={`flex h-10 w-full items-center rounded-xl px-4 transition-colors ${
                                 isActive
                                     ? "bg-[#1b1c1e] border border-[#303031] text-white"
                                     : "text-gray-500 hover:text-white duration-400"
-                            }`
-                        }
-                    >
-                        {item.name}
-                    </NavLink>
-                ))}
+                            }`}
+                        >
+                            {item.name}
+                        </Link>
+                    );
+                })}
             </div>
 
             <div className="flex items-center gap-5 h-10 p-4">

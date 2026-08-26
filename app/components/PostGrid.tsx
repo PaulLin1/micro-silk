@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 
 // Matches the old `columns-[17rem] gap-x-4` (17rem = 272px, gap-x-4 = 16px).

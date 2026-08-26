@@ -1,10 +1,17 @@
 .DS_Store
 .env
+.env*.local
 /node_modules/
 
-# React Router
-/.react-router/
+# Next.js
+/.next/
+/out/
 /build/
+next-env.d.ts
+*.tsbuildinfo
+
+# Vercel
+.vercel
 
 # Raw arena data dumps — reproducible via scripts/ingest_arena.ts,
 # and the real copy lives in Postgres once loaded.
