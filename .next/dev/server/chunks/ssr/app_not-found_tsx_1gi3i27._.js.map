@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/paullin/Documents/micro-silk/app/not-found.tsx"],"sourcesContent":["export default function NotFound() {\n    return (\n        <main className=\"pt-16 p-4 container mx-auto text-white\">\n            <h1 className=\"text-2xl\">404</h1>\n            <p>The requested page could not be found.</p>\n        </main>\n    );\n}\n"],"names":["NotFound","className"],"mappings":";;;;;;AAAe,SAASA;IACpB,qBACI,8OAAC;QAAKC,WAAU;;0BACZ,8OAAC;gBAAGA,WAAU;0BAAW;;;;;;0BACzB,8OAAC;0BAAE;;;;;;;;;;;;AAGf"}}]
+}

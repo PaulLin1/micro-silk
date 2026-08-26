@@ -1,0 +1,3 @@
+module.exports=[78141,a=>{"use strict";var b=a.i(87924);a.s(["default",0,function({reset:a}){return(0,b.jsxs)("main",{className:"pt-16 p-4 container mx-auto text-white",children:[(0,b.jsx)("h1",{className:"text-2xl",children:"Error"}),(0,b.jsx)("p",{children:"An unexpected error occurred."}),(0,b.jsx)("button",{onClick:a,className:"mt-4 h-10 px-4 rounded-full bg-[#252525]",children:"Try again"})]})}])}];
+
+//# sourceMappingURL=app_error_tsx_20-epnw._.js.map

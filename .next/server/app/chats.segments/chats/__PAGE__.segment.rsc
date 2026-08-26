@@ -1,0 +1,25 @@
+1:"$Sreact.fragment"
+2:I[82437,["/_next/static/chunks/3fntmmi971322.js","/_next/static/chunks/3rm6pser8jy67.js"],"Sidebar"]
+3:I[97367,["/_next/static/chunks/3fntmmi971322.js"],"OutletBoundary"]
+4:"$Sreact.suspense"
+8:I[97367,["/_next/static/chunks/3fntmmi971322.js"],"ViewportBoundary"]
+9:I[97367,["/_next/static/chunks/3fntmmi971322.js"],"MetadataBoundary"]
+a:I[27201,["/_next/static/chunks/3fntmmi971322.js"],"IconMark"]
+c:I[39756,["/_next/static/chunks/3fntmmi971322.js"],"default"]
+d:I[37457,["/_next/static/chunks/3fntmmi971322.js"],"default"]
+10:I[8821,["/_next/static/chunks/3fntmmi971322.js","/_next/static/chunks/1hoaq00p2i755.js"],"default"]
+:HL["/_next/static/chunks/3xb9amxjjq4ez.css","style"]
+:HL["https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap","style"]
+7:X
+f:X
+f:C
+0:{"buildId":"R8cweYRRiGSya_B1oIoVp","data":[{"rsc":["$","$1","c",{"children":[["$","main",null,{"className":"flex flex-row min-h-screen","children":[["$","$L2",null,{}],["$","div",null,{"className":"flex-1 pl-5 pr-5","children":"WIP"}]]}],[["$","script","script-0",{"src":"/_next/static/chunks/3rm6pser8jy67.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"isPartial":"$@6","staleTime":"$7","varyParams":null},{"rsc":["$","$1","h",{"children":[null,["$","$L8",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","div",null,{"hidden":true,"children":["$","$L9",null,{"children":["$","$4",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Micro Silk"}],["$","meta","1",{"name":"description","content":"Recreation of Silk"}],["$","link","2",{"rel":"icon","href":"/logo.png"}],["$","$La","3",{}]]}]}]}],null]}],"isPartial":"$@b","staleTime":"$7","varyParams":null},{"rsc":["$","$1","c",{"children":[null,["$","$Lc",null,{"parallelRouterKey":"children","template":["$","$Ld",null,{}]}]]}],"isPartial":"$@e","staleTime":"$7","varyParams":"$f"},{"rsc":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/3xb9amxjjq4ez.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/3fntmmi971322.js","async":true}]],["$","html",null,{"lang":"en","children":[["$","head",null,{"children":[["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"}]]}],["$","body",null,{"children":["$","$Lc",null,{"parallelRouterKey":"children","error":"$10","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/1hoaq00p2i755.js","async":true}]],"template":["$","$Ld",null,{}],"notFound":[["$","main",null,{"className":"pt-16 p-4 container mx-auto text-white","children":[["$","h1",null,{"className":"text-2xl","children":"404"}],["$","p",null,{"children":"The requested page could not be found."}]]}],[]]}]}]]}]]}],"isPartial":"$@11","staleTime":"$7","varyParams":null}],"isUpgradeableISRFallback":false,"a":"$@12","rootVaryParams":null,"needsRuntimeRequest":"$@13"}
+5:null
+7:300
+13:true
+7:C
+12:0
+b:"$undefined"
+e:"$undefined"
+11:"$undefined"
+6:"$undefined"
