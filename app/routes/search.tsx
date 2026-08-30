@@ -1,6 +1,6 @@
 import type { Route } from "./+types/search";
 import { Search } from "../search/search";
-import { magicSearch } from "~/search.server";
+import { search } from "~/search.server";
 
 export function meta({}: Route.MetaArgs) {
     return [
@@ -17,7 +17,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         return { blocks: [], query };
     }
 
-    const rows = await magicSearch(query);
+    const rows = await search(query);
 
     return { blocks: rows, query };
 }

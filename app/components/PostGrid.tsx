@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { blockImageSrc } from "~/arena-image";
 
 // Matches the old `columns-[17rem] gap-x-4` (17rem = 272px, gap-x-4 = 16px).
 const GRID_COLUMN_WIDTH = 272;
@@ -8,9 +9,16 @@ export type Block = {
     id: number;
     title: string | null;
     posterName: string | null;
+    imageUrl?: string | null;
 };
 
-export function PostGrid({ blocks }: { blocks: Block[] }) {
+export function PostGrid({
+    blocks,
+    onExplore,
+}: {
+    blocks: Block[];
+    onExplore?: (id: number) => void;
+}) {
     const gridRef = useRef<HTMLDivElement>(null);
     const [columnCount, setColumnCount] = useState(1);
 
@@ -45,9 +53,8 @@ export function PostGrid({ blocks }: { blocks: Block[] }) {
                     {column.map((block) => (
                         <PostCard
                             key={block.id}
-                            imageUrl={`/i/${block.id}`}
-                            imageName={block.title ?? "untitled"}
-                            posterName={block.posterName ?? "unknown"}
+                            block={block}
+                            onOpen={onExplore ? () => onExplore(block.id) : undefined}
                         />
                     ))}
                 </div>
@@ -57,24 +64,39 @@ export function PostGrid({ blocks }: { blocks: Block[] }) {
 }
 
 type PostCardProps = {
-    imageUrl: string;
-    imageName: string;
-    posterName: string;
+    block: Block;
+    onOpen?: () => void;
 };
 
-export function PostCard({ imageUrl, imageName, posterName }: PostCardProps) {
+export function PostCard({ block, onOpen }: PostCardProps) {
+    const img = (
+        <img
+            src={blockImageSrc(block, 400)}
+            alt={block.title ?? "untitled"}
+            loading="lazy"
+            decoding="async"
+            className="object-contain border border-gray-700 w-full"
+            onError={(e) => {
+                (e.currentTarget.closest("div") as HTMLElement).style.display = "none";
+            }}
+        />
+    );
+
     return (
         <div className="bg-neutral-800 w-full h-auto pl-1 pr-1 pt-1 border border-gray-700">
-            <img
-                src={imageUrl}
-                alt={imageName}
-                loading="lazy"
-                className="object-contain border border-gray-700 w-full"
-                onError={(e) => {
-                    e.currentTarget.parentElement!.style.display = "none";
-                }}
-            />
-            <p className="p-2 text-white">{posterName}</p>
+            {onOpen ? (
+                <button
+                    type="button"
+                    onClick={onOpen}
+                    className="block w-full cursor-pointer transition-opacity hover:opacity-90"
+                    title="Explore visually similar images"
+                >
+                    {img}
+                </button>
+            ) : (
+                img
+            )}
+            <p className="p-2 text-white">{block.posterName ?? "unknown"}</p>
         </div>
     );
 }

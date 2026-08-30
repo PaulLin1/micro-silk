@@ -11,9 +11,12 @@ import {
     vector,
 } from "drizzle-orm/pg-core";
 
-// keep in sync with MAGIC_SEARCH_SPACE_VERSION in app/routes/search.tsx —
-// the space actually served to users right now
-const LIVE_SPACE_VERSION = "clip-vit-base-patch32_base";
+// keep in sync with MAGIC_SEARCH_SPACE_VERSION (app/search.server.ts) and
+// SPACE_VERSION (app/explore.server.ts) — the space actually served to users.
+// This is the ONLY space_version with rows in block_embeddings; an index
+// scoped to any other string silently covers zero rows, forcing every
+// similarity query into a full-table brute-force scan.
+const LIVE_SPACE_VERSION = "clip-vit-base-patch32_channels-ft-v5";
 
 export const users = pgTable("users", {
     id: serial("id").primaryKey(),
@@ -35,15 +38,29 @@ export const channels = pgTable("channels", {
     crawledAt: timestamp("crawled_at").defaultNow().notNull(),
 });
 
-export const blocks = pgTable("blocks", {
-    id: serial("id").primaryKey(),
-    arenaBlockId: integer("arena_block_id").unique().notNull(),
-    type: text("type"), // Image / Text / Link / Media / Attachment — from block.class
-    title: text("title"),
-    sourceUrl: text("source_url"),
-    imageUrl: text("image_url"), // are.na CDN asset URL, from blocks.csv — poster info comes from connections, not a per-block column
-    crawledAt: timestamp("crawled_at").defaultNow().notNull(),
-});
+export const blocks = pgTable(
+    "blocks",
+    {
+        id: serial("id").primaryKey(),
+        arenaBlockId: integer("arena_block_id").unique().notNull(),
+        type: text("type"), // Image / Text / Link / Media / Attachment — from block.class
+        title: text("title"),
+        sourceUrl: text("source_url"),
+        imageUrl: text("image_url"), // are.na CDN asset URL, from blocks.csv — poster info comes from connections, not a per-block column
+        crawledAt: timestamp("crawled_at").defaultNow().notNull(),
+    },
+    (t) => ({
+        // The feed (routes/home.tsx) and text search both filter to
+        // `type = 'Image' AND image_url IS NOT NULL` — ~104k of 121k rows. Without
+        // this, every feed load (including each infinite-scroll page) seq-scans
+        // the whole blocks heap (~200MB) just to apply that filter and md5-sort.
+        // A partial index covering (id, title) lets that run as an index-only
+        // scan over ~3MB instead. Keep the predicate in sync with the queries.
+        feedIdx: index("blocks_feed_idx")
+            .on(t.id, t.title)
+            .where(sql`${t.type} = 'Image' AND ${t.imageUrl} IS NOT NULL`),
+    }),
+);
 
 // one row per (block, embedding space) — additive/versioned so a re-embed never
 // requires an in-place overwrite; join to blocks for display

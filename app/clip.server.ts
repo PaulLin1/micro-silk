@@ -21,12 +21,26 @@ function loadModel() {
             const tokenizer = await AutoTokenizer.from_pretrained(MODEL_NAME);
             const model = await CLIPTextModelWithProjection.from_pretrained(
                 MODEL_NAME,
-                { dtype: "fp32" },
+                // q8 instead of fp32: ~4x smaller download and far less memory
+                // on the 1GB Fly machine, so the first search doesn't stall on a
+                // 250MB load and the rest of the app isn't fighting it for RAM.
+                // Quantizing only the text tower shifts query vectors
+                // negligibly for cosine retrieval against the stored image
+                // embeddings.
+                { dtype: "q8" },
             );
             return { tokenizer, model };
         })();
     }
     return modelPromise;
+}
+
+// Kick off the model load at server boot (fire-and-forget) so the first user
+// search hits a warm cache instead of paying the whole download + init cost.
+export function warmClipModel(): void {
+    loadModel().catch((err) =>
+        console.error("clip model warmup failed:", err),
+    );
 }
 
 function l2Normalize(vec: Float32Array): number[] {

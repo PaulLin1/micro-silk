@@ -13,7 +13,10 @@ primary_region = 'ord'
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  # Keep one machine always warm: a cold start pays machine boot + Node start +
+  # CLIP model load before serving the first request. With a single always-on
+  # shared-CPU machine this is a few $/mo.
+  min_machines_running = 1
   processes = ['app']
 
 [[vm]]

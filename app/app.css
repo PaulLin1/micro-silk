@@ -8,3 +8,12 @@ html,
 body {
   @apply bg-black;
 }
+
+@keyframes explore-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
