@@ -1,10 +1,11 @@
 import type { Route } from "./+types/channels";
 import { Channels } from "../channels/Channels";
 import { listChannels } from "~/channels.server";
+import { SITE_NAME } from "~/site";
 
 export function meta() {
     return [
-        { title: "Channels — Micro Silk" },
+        { title: `Channels — ${SITE_NAME}` },
         { name: "description", content: "Browse curated channels" },
     ];
 }

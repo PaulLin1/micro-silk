@@ -1,11 +1,12 @@
 import type { Route } from "./+types/search";
 import { Search } from "../search/search";
 import { search } from "~/search.server";
+import { SITE_NAME } from "~/site";
 
 export function meta({}: Route.MetaArgs) {
     return [
-        { title: "Search — Micro Silk" },
-        { name: "description", content: "Search Micro Silk" },
+        { title: `Search — ${SITE_NAME}` },
+        { name: "description", content: `Search ${SITE_NAME}` },
     ];
 }
 

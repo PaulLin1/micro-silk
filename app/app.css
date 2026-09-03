@@ -1,19 +1,136 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Helvetica";
+/*
+  Print-shop palette: a white "paper" canvas, black "ink", and a printer's
+  yellow as the one brand accent. Single fixed theme — no dark mode, no toggle.
+*/
+:root {
+    --color-paper: #ffffff;
+    --color-ink: #000000;
+    --color-ink-soft: #777774;
+    --color-near-black: #242325;
+    --color-yellow: #f1eb2b;
+    --color-yellow-pale: #f7f7b0;
+    --color-blue: #189fd5;
+    --color-pink: #d7157e;
+    --color-purple: #a038c2;
+    --color-rule: rgba(0, 0, 0, 0.12);
+    --scrollbar-thumb: rgba(0, 0, 0, 0.25);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.45);
+}
+
+@theme inline {
+    --color-paper: var(--color-paper);
+    --color-ink: var(--color-ink);
+    --color-ink-soft: var(--color-ink-soft);
+    --color-near-black: var(--color-near-black);
+    --color-yellow: var(--color-yellow);
+    --color-yellow-pale: var(--color-yellow-pale);
+    --color-blue: var(--color-blue);
+    --color-pink: var(--color-pink);
+    --color-purple: var(--color-purple);
+    --color-rule: var(--color-rule);
+    --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 html,
 body {
-  @apply bg-black;
+    background: var(--color-paper);
+    color: var(--color-ink);
+}
+
+body {
+    font-weight: 500;
+    color-scheme: light;
+}
+
+::selection {
+    background: var(--color-yellow);
+    color: #000000;
+}
+
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+/* Thin, square scrollbars — no rounded pill, matching the hard-edged UI. */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
 }
 
 @keyframes explore-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Ambient feed — a field of images from the collection that crossfades in and
+   out, shown in place of the masonry grid. The swap loop in
+   components/AmbientCollage.tsx adds and removes nodes; the crossfade is all
+   here: a keyframe fades each image in on mount, and an opacity transition
+   fades it out once it's marked exiting. Both run over --collage-fade, set on
+   the container from the same JS constant. (Ported from linpaul.com.)
+--------------------------------------------------------------------------- */
+.collage {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.collage__img {
+    position: absolute;
+    object-fit: cover;
+    opacity: 0.85;
+    animation: collage-fade-in var(--collage-fade, 2s) ease-in-out backwards;
+    transition: opacity var(--collage-fade, 2s) ease-in-out;
+}
+
+/* The `to` is the class's own 0.85, so the mount fade never overshoots. */
+@keyframes collage-fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    /* The collage is a slow opacity crossfade, not movement — keep it fading
+       so its images don't snap in and out. Higher specificity than `*` wins
+       even against the !important reset. */
+    .collage__img {
+        animation-duration: var(--collage-fade, 2s) !important;
+        transition-duration: var(--collage-fade, 2s) !important;
+    }
 }

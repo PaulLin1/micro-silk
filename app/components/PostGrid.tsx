@@ -75,7 +75,7 @@ export function PostCard({ block, onOpen }: PostCardProps) {
             alt={block.title ?? "untitled"}
             loading="lazy"
             decoding="async"
-            className="object-contain border border-gray-700 w-full"
+            className="w-full border-b border-rule object-contain"
             onError={(e) => {
                 (e.currentTarget.closest("div") as HTMLElement).style.display = "none";
             }}
@@ -83,12 +83,12 @@ export function PostCard({ block, onOpen }: PostCardProps) {
     );
 
     return (
-        <div className="bg-neutral-800 w-full h-auto pl-1 pr-1 pt-1 border border-gray-700">
+        <div className="h-auto w-full border border-rule bg-paper">
             {onOpen ? (
                 <button
                     type="button"
                     onClick={onOpen}
-                    className="block w-full cursor-pointer transition-opacity hover:opacity-90"
+                    className="block w-full cursor-pointer transition-opacity hover:opacity-80"
                     title="Explore visually similar images"
                 >
                     {img}
@@ -96,7 +96,7 @@ export function PostCard({ block, onOpen }: PostCardProps) {
             ) : (
                 img
             )}
-            <p className="p-2 text-white">{block.posterName ?? "unknown"}</p>
+            <p className="p-2 text-sm text-ink-soft">{block.posterName ?? "unknown"}</p>
         </div>
     );
 }

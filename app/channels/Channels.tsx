@@ -1,26 +1,21 @@
 import { Link } from "react-router";
-import { Sidebar } from "~/components/Sidebar";
 import { arenaImage } from "~/arena-image";
 import type { ChannelCard } from "~/channels.server";
 
 export function Channels({ channels }: { channels: ChannelCard[] }) {
     return (
-        <main className="flex min-h-screen flex-row">
-            <Sidebar />
+        <main className="px-5 pb-16 sm:px-8">
+            <nav className="sticky top-14 z-10 flex h-16 items-center gap-3 bg-paper">
+                <h1 className="text-lg text-ink">Channels</h1>
+                <span className="text-sm text-ink-soft">
+                    {channels.length} collections
+                </span>
+            </nav>
 
-            <div className="flex-1 px-5 pb-16">
-                <nav className="sticky top-0 z-10 flex h-20 items-center bg-[#0b0b0c]">
-                    <h1 className="text-lg text-white">Channels</h1>
-                    <span className="ml-3 text-sm text-gray-500">
-                        {channels.length} collections
-                    </span>
-                </nav>
-
-                <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(248px,1fr))]">
-                    {channels.map((ch) => (
-                        <ChannelCardView key={ch.id} channel={ch} />
-                    ))}
-                </div>
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(248px,1fr))]">
+                {channels.map((ch) => (
+                    <ChannelCardView key={ch.id} channel={ch} />
+                ))}
             </div>
         </main>
     );
@@ -30,9 +25,9 @@ function ChannelCardView({ channel }: { channel: ChannelCard }) {
     return (
         <Link
             to={`/channels/${channel.id}`}
-            className="group flex flex-col overflow-hidden rounded-lg border border-[#232325] bg-[#131315] transition-colors hover:border-[#3b3b3f]"
+            className="group flex flex-col overflow-hidden border border-rule bg-paper transition-colors hover:border-ink"
         >
-            <div className="grid aspect-[4/3] grid-cols-2 grid-rows-2 gap-px bg-[#232325]">
+            <div className="grid aspect-[4/3] grid-cols-2 grid-rows-2 gap-px bg-rule">
                 {Array.from({ length: 4 }).map((_, i) => {
                     const b = channel.preview[i];
                     return b ? (
@@ -45,29 +40,29 @@ function ChannelCardView({ channel }: { channel: ChannelCard }) {
                             className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
                         />
                     ) : (
-                        <div key={i} className="bg-[#1b1b1d]" />
+                        <div key={i} className="bg-paper" />
                     );
                 })}
             </div>
 
             <div className="flex flex-1 flex-col p-3">
                 <div className="flex items-baseline justify-between gap-2">
-                    <h2 className="truncate text-sm font-medium text-white">
+                    <h2 className="truncate text-sm font-medium text-ink">
                         {channel.title}
                     </h2>
                     {channel.itemCount != null && (
-                        <span className="shrink-0 text-[11px] text-gray-500">
+                        <span className="shrink-0 text-[11px] text-ink-soft">
                             {channel.itemCount.toLocaleString()}
                         </span>
                     )}
                 </div>
                 {channel.curator && (
-                    <p className="mt-0.5 truncate text-[11px] text-gray-500">
+                    <p className="mt-0.5 truncate text-[11px] text-ink-soft">
                         @{channel.curator}
                     </p>
                 )}
                 {channel.description && (
-                    <p className="mt-1.5 line-clamp-2 text-xs text-gray-400">
+                    <p className="mt-1.5 line-clamp-2 text-xs text-ink-soft">
                         {channel.description}
                     </p>
                 )}

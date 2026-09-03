@@ -33,12 +33,14 @@ export function ExploreView({
             <button
                 type="button"
                 onClick={onClose}
-                className="absolute left-4 top-4 z-20 flex h-9 items-center gap-1.5 rounded-lg bg-[#181818]/85 pl-2 pr-3 text-sm text-white backdrop-blur-md transition-colors hover:bg-[#252525]"
+                className="absolute left-4 top-4 z-40 flex h-9 items-center gap-1.5 border-2 border-ink bg-paper px-3 text-sm text-ink transition-opacity hover:opacity-70"
             >
                 <span aria-hidden>←</span> Feed
             </button>
 
-            <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#181818]/70 px-4 py-1.5 text-[11px] text-gray-400 backdrop-blur-md">
+            {/* Cleared above the fixed footer (Footer.tsx), not tight to the
+                container edge like the old bottom-4. */}
+            <div className="pointer-events-none absolute bottom-14 left-1/2 z-40 -translate-x-1/2 whitespace-nowrap border border-ink bg-paper px-4 py-1.5 text-[11px] text-ink-soft">
                 drag to roam the web · click an image to jump to it · esc
             </div>
         </div>

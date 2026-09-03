@@ -1,13 +1,14 @@
 import type { Route } from "./+types/channel";
 import { Channel } from "../channels/Channel";
 import { getChannel } from "~/channels.server";
+import { SITE_NAME } from "~/site";
 
 export function meta({ loaderData }: Route.MetaArgs) {
     return [
         {
             title: loaderData?.channel
-                ? `${loaderData.channel.title} — Micro Silk`
-                : "Channel — Micro Silk",
+                ? `${loaderData.channel.title} — ${SITE_NAME}`
+                : `Channel — ${SITE_NAME}`,
         },
     ];
 }

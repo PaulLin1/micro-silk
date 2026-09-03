@@ -598,14 +598,14 @@ export function ExploreWeb({
     return (
         <div
             ref={containerRef}
-            className="absolute inset-0 touch-none select-none overflow-hidden bg-black"
+            className="absolute inset-0 touch-none select-none overflow-hidden bg-paper"
             style={{ cursor: "grab" }}
         >
             <div
                 className="pointer-events-none absolute inset-0"
                 style={{
                     background:
-                        "radial-gradient(circle at 50% 45%, #17171b 0%, #0b0b0c 66%)",
+                        "radial-gradient(circle at 50% 40%, transparent 0%, color-mix(in srgb, var(--color-ink) 6%, transparent) 100%)",
                 }}
             />
 
@@ -627,7 +627,7 @@ export function ExploreWeb({
                             width: 0,
                             marginTop: -1,
                             background:
-                                "linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.22))",
+                                "linear-gradient(90deg, transparent, var(--color-ink-soft))",
                         }}
                     />
                 ))}
@@ -652,8 +652,8 @@ export function ExploreWeb({
                             }
                             className={`group absolute left-0 top-0 block overflow-hidden rounded-2xl p-0 ${
                                 isRoot
-                                    ? "cursor-default ring-2 ring-white"
-                                    : "cursor-pointer ring-1 ring-white/15 hover:ring-white/70"
+                                    ? "cursor-default ring-2 ring-yellow"
+                                    : "cursor-pointer ring-1 ring-ink/15 hover:ring-ink/60"
                             }`}
                             style={{ width: size, height: size, opacity: 0 }}
                         >
@@ -672,7 +672,7 @@ export function ExploreWeb({
                                     className="h-full w-full object-cover transition group-hover:brightness-110"
                                 />
                             ) : (
-                                <div className="h-full w-full bg-[#1b1b1d]" />
+                                <div className="h-full w-full bg-rule" />
                             )}
                         </button>
                     );
@@ -680,12 +680,12 @@ export function ExploreWeb({
             </div>
 
             {status === "loading" ? (
-                <div className="absolute inset-0 grid place-items-center text-sm text-gray-400">
+                <div className="absolute inset-0 grid place-items-center text-sm text-ink-soft">
                     finding connections…
                 </div>
             ) : null}
             {status === "error" ? (
-                <div className="absolute inset-0 grid place-items-center text-sm text-gray-400">
+                <div className="absolute inset-0 grid place-items-center text-sm text-ink-soft">
                     no connections for this image.
                 </div>
             ) : null}

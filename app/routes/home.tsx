@@ -4,11 +4,15 @@ import { Welcome } from "../welcome/welcome";
 import { db } from "~/db.server";
 import { blocks } from "~/db/schema";
 import { posterNameSql } from "~/db/poster";
+import { SITE_NAME } from "~/site";
 
 export function meta({}: Route.MetaArgs) {
     return [
-        { title: "Micro Silk" },
-        { name: "description", content: "Recreation of Silk" },
+        { title: SITE_NAME },
+        {
+            name: "description",
+            content: "A testbed for image-feed and visual-discovery UI.",
+        },
     ];
 }
 
