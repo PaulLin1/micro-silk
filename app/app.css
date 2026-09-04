@@ -1,36 +1,55 @@
 @import "tailwindcss";
+@import "./tokens.css";
 
 /*
-  Print-shop palette: a white "paper" canvas, black "ink", and a printer's
-  yellow as the one brand accent. Single fixed theme — no dark mode, no toggle.
+  Black on white — canvas and text only. Accents (navy/red/cyan/iris/yellow)
+  are for small marks, never the chrome. Single fixed theme here — no dark
+  mode, no toggle (this project never adds the `.dark` class defined in
+  tokens.css). The color tokens themselves live in ./tokens.css, shared with
+  linpaul.com and oneoneone.
 */
-:root {
-    --color-paper: #ffffff;
-    --color-ink: #000000;
-    --color-ink-soft: #777774;
-    --color-near-black: #242325;
-    --color-yellow: #f1eb2b;
-    --color-yellow-pale: #f7f7b0;
-    --color-blue: #189fd5;
-    --color-pink: #d7157e;
-    --color-purple: #a038c2;
-    --color-rule: rgba(0, 0, 0, 0.12);
-    --scrollbar-thumb: rgba(0, 0, 0, 0.25);
-    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.45);
-}
-
 @theme inline {
     --color-paper: var(--color-paper);
     --color-ink: var(--color-ink);
     --color-ink-soft: var(--color-ink-soft);
     --color-near-black: var(--color-near-black);
-    --color-yellow: var(--color-yellow);
-    --color-yellow-pale: var(--color-yellow-pale);
-    --color-blue: var(--color-blue);
-    --color-pink: var(--color-pink);
-    --color-purple: var(--color-purple);
     --color-rule: var(--color-rule);
-    --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --color-wash: var(--color-wash);
+    --color-navy: var(--color-navy);
+    --color-red: var(--color-red);
+    --color-cyan: var(--color-cyan);
+    --color-iris: var(--color-iris);
+    --color-yellow: var(--color-yellow);
+    --color-link: var(--color-link); /* = navy; `text-link` for inline links */
+    /* Shared UI/sans face — Helvetica Neue, from ./tokens.css. */
+    --font-sans: var(--font-sans);
+}
+
+/* The type law (see design-system/DESIGN.md): NO BOLD, NO ALL-CAPS. Every
+   font-weight utility collapses to the one body weight; `uppercase` becomes a
+   no-op; the letterspacing that went with the retired all-caps label look is
+   zeroed. Unlayered, so these win over Tailwind's utilities without
+   !important, and every existing className stays put. */
+@theme {
+    --font-weight-thin: var(--font-weight-body);
+    --font-weight-extralight: var(--font-weight-body);
+    --font-weight-light: var(--font-weight-body);
+    --font-weight-normal: var(--font-weight-body);
+    --font-weight-medium: var(--font-weight-body);
+    --font-weight-semibold: var(--font-weight-body);
+    --font-weight-bold: var(--font-weight-body);
+    --font-weight-extrabold: var(--font-weight-body);
+    --font-weight-black: var(--font-weight-body);
+}
+
+.uppercase {
+    text-transform: none;
+}
+
+/* Positive letter-spacing utilities (tracking-[0.1em] … [0.2em]) — not
+   tracking-tight / -[-0.01em] on wordmarks. */
+[class*="tracking-[0."] {
+    letter-spacing: normal;
 }
 
 html,
@@ -40,8 +59,41 @@ body {
 }
 
 body {
-    font-weight: 500;
+    font-family: var(--font-sans);
+    font-weight: var(--font-weight-body);
     color-scheme: light;
+}
+
+/* Soft corners, family-wide (linpaul.com does the same). Applied broadly here
+   so components pick it up without a `rounded-*` class on each one: buttons,
+   fields, bordered cards, the solid-fill marks and images. Unlayered, so it
+   wins over Tailwind's utilities. */
+button,
+input,
+textarea,
+select,
+[class~="border"],
+[class~="border-2"],
+[class*="bg-cyan"],
+[class*="bg-red"],
+[class*="bg-iris"] {
+    border-radius: var(--radius);
+}
+
+/* Full-bleed surfaces, and the small decorative marks, keep hard corners. */
+body,
+header,
+main,
+.collage__img,
+[class~="bg-navy"],
+[class~="bg-link"] {
+    border-radius: 0;
+}
+
+/* Explicit pills win — the rules above are unlayered, so they'd otherwise
+   override Tailwind's layered `rounded-full` utility. (linpaul-style buttons.) */
+[class~="rounded-full"] {
+    border-radius: 9999px;
 }
 
 ::selection {

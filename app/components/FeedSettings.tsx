@@ -51,7 +51,7 @@ export function FeedSettings({
     onChange: (v: FeedView) => void;
 }) {
     return (
-        <div className="fixed right-4 top-[4.25rem] z-[120] flex border-2 border-ink bg-paper sm:right-8">
+        <div className="fixed right-4 top-[4.25rem] z-[120] flex overflow-hidden border-2 border-ink bg-paper sm:right-8">
             {OPTIONS.map((opt) => (
                 <button
                     key={opt.value}
@@ -60,7 +60,7 @@ export function FeedSettings({
                     aria-pressed={view === opt.value}
                     className={`px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] transition-colors ${
                         view === opt.value
-                            ? "bg-ink text-paper"
+                            ? "bg-navy text-paper"
                             : "text-ink-soft hover:text-ink"
                     }`}
                 >

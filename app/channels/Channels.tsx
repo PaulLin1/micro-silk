@@ -2,6 +2,9 @@ import { Link } from "react-router";
 import { arenaImage } from "~/arena-image";
 import type { ChannelCard } from "~/channels.server";
 
+// Rotating accent edge, matching the feed's PostCards (not yellow).
+const CARD_ACCENTS = ["border-navy", "border-red", "border-cyan", "border-iris"];
+
 export function Channels({ channels }: { channels: ChannelCard[] }) {
     return (
         <main className="px-5 pb-16 sm:px-8">
@@ -13,19 +16,29 @@ export function Channels({ channels }: { channels: ChannelCard[] }) {
             </nav>
 
             <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(248px,1fr))]">
-                {channels.map((ch) => (
-                    <ChannelCardView key={ch.id} channel={ch} />
+                {channels.map((ch, i) => (
+                    <ChannelCardView
+                        key={ch.id}
+                        channel={ch}
+                        accent={CARD_ACCENTS[i % CARD_ACCENTS.length]}
+                    />
                 ))}
             </div>
         </main>
     );
 }
 
-function ChannelCardView({ channel }: { channel: ChannelCard }) {
+function ChannelCardView({
+    channel,
+    accent,
+}: {
+    channel: ChannelCard;
+    accent: string;
+}) {
     return (
         <Link
             to={`/channels/${channel.id}`}
-            className="group flex flex-col overflow-hidden border border-rule bg-paper transition-colors hover:border-ink"
+            className={`group flex flex-col overflow-hidden border-2 bg-paper transition-opacity hover:opacity-90 ${accent}`}
         >
             <div className="grid aspect-[4/3] grid-cols-2 grid-rows-2 gap-px bg-rule">
                 {Array.from({ length: 4 }).map((_, i) => {

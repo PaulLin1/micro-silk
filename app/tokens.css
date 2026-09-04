@@ -1,0 +1,89 @@
+/* =============================================================================
+   DESIGN TOKENS — SINGLE SOURCE OF TRUTH
+
+   Canonical file: design-system/tokens.css
+   The copies inside each project (linpaul.com/styles/, oneoneone/app/,
+   social-media-sandbox/app/) are GENERATED. Do not edit them.
+
+   To change the system: edit THIS file, then run design-system/sync.sh,
+   then commit each project repo separately.
+
+   See design-system/DESIGN.md for what the tokens mean and how they're used.
+============================================================================= */
+
+:root {
+  /* --- The system is black on white ------------------------------------------
+     Canvas + text are ONLY paper / ink / a neutral gray. No color in the
+     chrome. The paper↔ink pair is the only thing that flips in dark mode. */
+  --color-paper: #ffffff;
+  --color-ink: #000000;
+  --color-ink-soft: #6f6f6f; /* secondary text — neutral gray, not a hue */
+  --color-near-black: #171717;
+  --color-rule: rgba(0, 0, 0, 0.14); /* hairlines, borders */
+  --color-wash: rgba(0, 0, 0, 0.05); /* faint hover / selected fill */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.28);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.5);
+
+  /* --- Accents --------------------------------------------------------------
+     Five. Used sparingly, and only on SMALL marks — category badges, status
+     dots, a rule under a title, links, error text, an identifying avatar.
+     NEVER on structural chrome (masthead, footer, page frame, primary
+     buttons): those are black on white, no exceptions. Fixed identity — they
+     do not flip in dark mode. */
+  --color-navy: #25408f; /* rgb(37 64 143)  */
+  --color-red: #d3222a; /* rgb(211 34 42)  */
+  --color-cyan: #00aeed; /* rgb(0 174 237)  */
+  --color-iris: #4756a5; /* rgb(71 86 165)  */
+  --color-yellow: #fef200; /* rgb(254 242 0) — the RAREST accent: ::selection
+                              and almost nothing else. Never a fill. */
+
+  /* Navy is the default working accent — every link, every "rule under a
+     title", selected controls. red / cyan / iris are for SETS (categories,
+     rotating borders, status dots). */
+  --color-link: var(--color-navy);
+
+  /* --- Non-color primitives ------------------------------------------------ */
+  --radius: 0.5rem; /* soft corners, family-wide — cards, chips, fields, images */
+  --font-sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Light Helvetica — like the original linpaul.com, and about as close to
+     "Neue Helvetica World 45 Light" as you get without licensing it. On macOS
+     this renders Helvetica Neue Light; Windows has no Helvetica Neue and falls
+     back to Arial (regular). Nothing heavier anywhere — the type law. */
+  --font-weight-body: 300;
+  --focus-ring: 2px solid var(--color-ink);
+}
+
+/* Dark mode: paper↔ink invert, chrome grays track. Accents do NOT change.
+   Opt in per project by putting `.dark` on <html> (oneoneone does; linpaul.com
+   and social-media-sandbox are light-only and simply never add the class). */
+.dark {
+  --color-paper: var(--color-near-black);
+  --color-ink: #f4f4f4;
+  --color-ink-soft: #9a9a9a;
+  --color-rule: rgba(255, 255, 255, 0.16);
+  --color-wash: rgba(255, 255, 255, 0.07);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.3);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.5);
+  /* The five accents are fixed — but navy is too dark to read on the dark
+     canvas, so the link/mark accent (only) lightens. Still navy in character. */
+  --color-link: #6b8fd6;
+}
+
+/* -----------------------------------------------------------------------------
+   Shared base — the type law: NO BOLD and NO ALL-CAPS, anywhere, on any site.
+
+   Everything sits at --font-weight-body. Headings, table headers and rich-text
+   <strong>/<b> (markdown, the typography plugin) are pinned back to it here.
+   Unlayered on purpose, so this also overrides Tailwind's own base styles.
+   Tailwind's font-* weight utilities and its `uppercase` utility are
+   neutralised separately inside each Tailwind project's stylesheet — they
+   can't be reached from a plain CSS file.
+-------------------------------------------------------------------------------- */
+:is(h1, h2, h3, h4, h5, h6, th, strong, b) {
+  font-weight: var(--font-weight-body);
+}
+
+:is(h1, h2, h3, h4, h5, h6) {
+  text-transform: none;
+}

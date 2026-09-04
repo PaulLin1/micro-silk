@@ -41,8 +41,16 @@ export function PostGrid({
     }, []);
 
     const columns = useMemo(() => {
-        const cols: Block[][] = Array.from({ length: columnCount }, () => []);
-        blocks.forEach((block, i) => cols[i % columnCount].push(block));
+        const cols: { block: Block; accent: string }[][] = Array.from(
+            { length: columnCount },
+            () => [],
+        );
+        blocks.forEach((block, i) =>
+            cols[i % columnCount].push({
+                block,
+                accent: CARD_ACCENTS[i % CARD_ACCENTS.length],
+            }),
+        );
         return cols;
     }, [blocks, columnCount]);
 
@@ -50,10 +58,11 @@ export function PostGrid({
         <div ref={gridRef} className="flex flex-row gap-4">
             {columns.map((column, i) => (
                 <div key={i} className="flex flex-1 min-w-0 flex-col gap-4">
-                    {column.map((block) => (
+                    {column.map(({ block, accent }) => (
                         <PostCard
                             key={block.id}
                             block={block}
+                            accent={accent}
                             onOpen={onExplore ? () => onExplore(block.id) : undefined}
                         />
                     ))}
@@ -63,12 +72,17 @@ export function PostGrid({
     );
 }
 
+// Each card takes one of the four accents (not yellow), cycling down the
+// feed — a wall of images with a rotating colored edge.
+const CARD_ACCENTS = ["border-navy", "border-red", "border-cyan", "border-iris"];
+
 type PostCardProps = {
     block: Block;
+    accent?: string;
     onOpen?: () => void;
 };
 
-export function PostCard({ block, onOpen }: PostCardProps) {
+export function PostCard({ block, accent, onOpen }: PostCardProps) {
     const img = (
         <img
             src={blockImageSrc(block, 400)}
@@ -83,7 +97,9 @@ export function PostCard({ block, onOpen }: PostCardProps) {
     );
 
     return (
-        <div className="h-auto w-full border border-rule bg-paper">
+        <div
+            className={`h-auto w-full overflow-hidden border-2 bg-paper ${accent ?? "border-rule"}`}
+        >
             {onOpen ? (
                 <button
                     type="button"

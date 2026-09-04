@@ -9,7 +9,6 @@ import {
 
 import type { Route } from "./+types/root";
 import { Masthead } from "./components/Masthead";
-import { Footer } from "./components/Footer";
 import "./app.css";
 
 export const links: Route.LinksFunction = () => [
@@ -32,7 +31,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <body>
                 <Masthead />
                 {children}
-                <Footer />
                 <ScrollRestoration />
                 <Scripts />
             </body>

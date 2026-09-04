@@ -23,7 +23,7 @@ export function Search({ blocks, query }: { blocks: Block[]; query: string }) {
                         <PostGrid blocks={blocks} onExplore={explore.open} />
                     )}
 
-                    <div className="fixed bottom-14 left-1/2 z-50 w-[min(48rem,calc(100vw-2rem))] -translate-x-1/2">
+                    <div className="fixed bottom-4 left-1/2 z-50 w-[min(48rem,calc(100vw-2rem))] -translate-x-1/2">
                         <Form
                             method="get"
                             className="flex items-center gap-3 border-2 border-ink bg-paper p-3"
@@ -38,7 +38,7 @@ export function Search({ blocks, query }: { blocks: Block[]; query: string }) {
 
                             <button
                                 type="submit"
-                                className="flex h-10 w-10 shrink-0 items-center justify-center bg-yellow text-lg text-black"
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink bg-paper text-lg text-ink transition-colors hover:bg-ink hover:text-paper"
                             >
                                 ⌕
                             </button>
