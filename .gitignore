@@ -6,6 +6,9 @@
 /.react-router/
 /build/
 
+# Leftover from before this project moved from Next.js to React Router
+/.next/
+
 # Raw arena data dumps — reproducible via scripts/ingest_arena.ts,
 # and the real copy lives in Postgres once loaded.
 /blocks.csv

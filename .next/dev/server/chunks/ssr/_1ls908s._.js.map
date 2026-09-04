@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/paullin/Documents/micro-silk/app/error.tsx"],"sourcesContent":["\"use client\";\n\nexport default function Error({ reset }: { error: Error; reset: () => void }) {\n    return (\n        <main className=\"pt-16 p-4 container mx-auto text-white\">\n            <h1 className=\"text-2xl\">Error</h1>\n            <p>An unexpected error occurred.</p>\n            <button\n                onClick={reset}\n                className=\"mt-4 h-10 px-4 rounded-full bg-[#252525]\"\n            >\n                Try again\n            </button>\n        </main>\n    );\n}\n"],"names":["Error","reset","className","onClick"],"mappings":";;;;;AAAA;;AAEe,SAASA,MAAM,EAAEC,KAAK,EAAuC;IACxE,qBACI,8OAAC;QAAKC,WAAU;;0BACZ,8OAAC;gBAAGA,WAAU;0BAAW;;;;;;0BACzB,8OAAC;0BAAE;;;;;;0BACH,8OAAC;gBACGC,SAASF;gBACTC,WAAU;0BACb;;;;;;;;;;;;AAKb"}},
-    {"offset": {"line": 50, "column": 0}, "map": {"version":3,"sources":["file:///Users/paullin/Documents/micro-silk/node_modules/next/src/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.ts"],"sourcesContent":["module.exports = (\n  require('../../module.compiled') as typeof import('../../module.compiled')\n).vendored['react-ssr']!.ReactJsxDevRuntime\n"],"names":["module","exports","require","vendored","ReactJsxDevRuntime"],"mappings":"AAAAA,OAAOC,OAAO,GACZC,QAAQ,4HACRC,QAAQ,CAAC,YAAY,CAAEC,kBAAkB","ignoreList":[0]}}]
-}
